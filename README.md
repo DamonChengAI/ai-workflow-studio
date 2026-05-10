@@ -23,6 +23,10 @@ AI Workflow Studio 围绕 `Media Card` 建模。Media Card 是单个素材生成
 
 公开版保持 mock-only，让 workflow 结构、校验、轮询、失败重试和 preview 回写可以被直接审阅，同时不暴露真实内容、供应商、素材、凭证或本地路径。
 
+![AI Workflow Studio 工作台总览](docs/assets/readme/ai-workflow-studio-workspace.png)
+
+_工作台按 Idea / Scene / Segment 拆解内容生产流程，并把素材生成结果回写到预览位置。_
+
 ## 这个项目展示什么
 
 - 多层 AI 生产对象建模。

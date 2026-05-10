@@ -23,6 +23,10 @@ AI Workflow Studio models this flow around the `Media Card`. A Media Card is the
 
 The public version stays mock-only so the workflow structure, validation, polling, retry handling, and preview updates can be reviewed without exposing real content, providers, assets, credentials, or local paths.
 
+![AI Workflow Studio workspace overview](docs/assets/readme/ai-workflow-studio-workspace.png)
+
+_The workspace decomposes content production into Idea / Scene / Segment objects and writes generated media results back to the preview area._
+
 ## What This Demonstrates
 
 - Multi-level AI production object modeling.
