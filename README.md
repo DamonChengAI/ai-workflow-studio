@@ -1,31 +1,39 @@
 # AI Workflow Studio
 
-这是一个 **mock-only 的 AI 生产工作台 showcase**。它复用原 Workspace MVP 的信息架构，保留主生成流程：
+`AI Workflow Studio` is a mock-only public showcase of an AI production workspace. It reuses the information architecture of an internal workspace MVP and preserves the core generation flow:
 
 ```text
 Idea -> Scene -> Segment -> Media Card -> Media Task
 ```
 
-公开版不包含真实业务、真实供应商、真实素材、真实输出、真实密钥或本地路径。所有数据都是 sample data，所有生成任务都由 mock provider 完成。仓库内包含一组通用静态 mock 图片，用来展示 `preview_url` 回写后的视觉效果；这些图片不来自真实项目素材。
+The public version does not include real business logic, real providers, real assets, real outputs, real secrets, or local paths. All data is sample data, and every generation task is completed by a mock provider. The repository includes generic static mock images to demonstrate `preview_url` write-back; these images do not come from any real project assets.
 
-内置两组完全虚构的 demo 数据：
+The repository includes two fully fictional demo datasets:
 
-- `AI 工作流生产台`：展示 schema、状态机、轮询、失败重试和 preview 回写。
-- `小红书图文工作流`：展示图文内容 Agent 如何复用同一套 Idea / Scene / Segment / Media Card 结构。
+- `AI Workflow Production Desk`: demonstrates schema design, task state, polling, failed/retry handling, and preview write-back.
+- `Xiaohongshu Content Workflow`: demonstrates how a graphic-content Agent can reuse the same Idea / Scene / Segment / Media Card structure.
 
-## 这个项目展示什么
+## Why This Exists
 
-- 多层 AI 生产对象拆解
-- Media Card 作为生成任务的生产合约
-- mock provider submit
-- task polling
-- aggregate_status 聚合
-- failed / retry
-- preview_url 回写
-- 静态 mock 视觉资产
-- validator、CLI、测试和 agent-friendly 检查
+A complex AI production workflow is not just one model call. One idea can contain multiple scenes and segments. Each segment may need image, video, and voiceover assets, and each asset may become a separate generation task with its own prompt, constraints, provider type, task state, failure mode, retry action, and preview write-back target.
 
-## 这个项目不声称什么
+AI Workflow Studio models this flow around the `Media Card`. A Media Card is the production contract for one generated asset: it describes what to generate, which prompt to use, which provider type should handle it, what input constraints apply, and where the result should be written back.
+
+The public version stays mock-only so the workflow structure, validation, polling, retry handling, and preview updates can be reviewed without exposing real content, providers, assets, credentials, or local paths.
+
+## What This Demonstrates
+
+- Multi-level AI production object modeling.
+- Media Card as the production contract for generation tasks.
+- Mock provider submission.
+- Task polling.
+- `aggregate_status` updates.
+- Failed task state and retry handling.
+- `preview_url` write-back.
+- Static mock visual assets.
+- Validator, CLI, tests, and agent-friendly checks.
+
+## What This Project Does Not Claim
 
 - It does not claim to be a differentiated video generation product.
 - It does not include real content operations.
@@ -33,67 +41,52 @@ Idea -> Scene -> Segment -> Media Card -> Media Task
 - It does not include growth metrics or commercial results.
 - It is a technical product sandbox for workflow decomposition and task-state design.
 
-## 运行
+## Run Locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-打开：
+Open:
 
 ```text
 http://localhost:3000/workspace
 ```
 
-工程检查：
+Engineering check:
 
 ```bash
 npm run check
 ```
 
-## 面试展示路径
+## Demo Path
 
-1. 打开 `/workspace`。
-2. 点击“复制全部内容”，展示完整 Scene / Segment 内容可被一次性带走。
-3. 选择 Scene 和 Segment。
-4. 查看当前 Segment 的 Media Card。
-5. 修改 Prompt 并保存卡片。
-6. 点击“提交生成”。
-7. 点击“轮询任务”两次，观察 `processing -> completed`。
-8. 切到带 `[FAIL]` 的 video card，提交并轮询到 failed。
-9. 点击“重试失败任务”，再轮询到 completed。
+1. Open `/workspace`.
+2. Use the copy-all action to copy the full Scene / Segment content.
+3. Select a Scene and Segment.
+4. Review the current Segment's Media Card.
+5. Edit the Prompt and save the card.
+6. Submit the current media card to the mock provider.
+7. Poll running tasks twice and observe `processing -> completed`.
+8. Switch to a video card containing `[FAIL]`, submit it, and poll it to `failed`.
+9. Retry the failed task, then poll it to `completed`.
 
-## 隐私边界
+## Privacy Boundary
 
-公开版不包含：
+The public version does not include:
 
-- 真实业务策略
-- 真实内容主题
-- 真实人物或个人素材
-- 真实 provider
-- 真实 API
-- 真实密钥
-- 真实对象存储
-- 真实输出文件
-- 真实运营数据
-- 本地绝对路径
+- Real business strategy.
+- Real content topics.
+- Real people or personal assets.
+- Real providers.
+- Real APIs.
+- Real secrets.
+- Real object storage.
+- Real output files.
+- Real operations data.
+- Local absolute paths.
 
-## English Summary
+## License
 
-AI Workflow Studio is a mock-only public showcase of an AI production workspace. It demonstrates how a multi-step AI generation flow can be decomposed into structured objects, media cards, provider tasks, polling, aggregate status updates, retry handling, and preview write-back.
-
-It is designed for interview review and technical discussion. It does not connect to external providers, store private assets, include real content operations, or claim product-market differentiation.
-
-Run it with:
-
-```bash
-npm install
-npm run dev
-```
-
-Then open:
-
-```text
-http://localhost:3000/workspace
-```
+MIT License. See [LICENSE](LICENSE).
