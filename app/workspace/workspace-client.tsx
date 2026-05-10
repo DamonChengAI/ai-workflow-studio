@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { ApiDataPayload, ApiListPayload, AppSettings, Idea, IdeaCover, MediaProvider, MediaTask, Scene, Segment, SegmentMedia } from "@/lib/types";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { ApiDataPayload, ApiListPayload, AppSettings, Idea, IdeaCover, MediaProvider, MediaTask, Scene, Segment, SegmentAudioTask, SegmentMedia } from "@/lib/types";
 
 interface MediaDraft {
   prompt: string;
@@ -99,6 +99,15 @@ async function copyTextToClipboard(text: string) {
   }
 }
 
+function readImageFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error("读取参考图失败"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function WorkspaceClient() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -107,6 +116,7 @@ export default function WorkspaceClient() {
   const [overviewSegments, setOverviewSegments] = useState<Segment[]>([]);
   const [mediaCards, setMediaCards] = useState<SegmentMedia[]>([]);
   const [tasksMap, setTasksMap] = useState<Record<string, MediaTask[]>>({});
+  const [audioTasks, setAudioTasks] = useState<SegmentAudioTask[]>([]);
   const [mediaDrafts, setMediaDrafts] = useState<Record<string, MediaDraft>>({});
   const [covers, setCovers] = useState<IdeaCover[]>([]);
 
@@ -122,10 +132,12 @@ export default function WorkspaceClient() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const referenceInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const selectedIdea = useMemo(() => ideas.find((item) => item.idea_id === selectedIdeaId) ?? null, [ideas, selectedIdeaId]);
   const selectedScene = useMemo(() => scenes.find((item) => item.scene_id === selectedSceneId) ?? null, [scenes, selectedSceneId]);
   const selectedSegment = useMemo(() => segments.find((item) => item.segment_id === selectedSegmentId) ?? null, [segments, selectedSegmentId]);
+  const latestAudioTask = useMemo(() => audioTasks.at(-1) ?? null, [audioTasks]);
 
   function clearFeedback() {
     setMessage("");
@@ -200,13 +212,19 @@ export default function WorkspaceClient() {
     setTasksMap(Object.fromEntries(entries));
   }
 
+  async function loadAudioTasks(segmentId: string) {
+    const payload = await requestJson<ApiListPayload<SegmentAudioTask>>(`/api/segments/${segmentId}/audio`);
+    setAudioTasks(payload.data.items);
+  }
+
   async function reloadCurrentLayer() {
     if (!selectedSegmentId) {
       setMediaCards([]);
       setTasksMap({});
+      setAudioTasks([]);
       return;
     }
-    await loadMediaCards(selectedSegmentId);
+    await Promise.all([loadMediaCards(selectedSegmentId), loadAudioTasks(selectedSegmentId)]);
   }
 
   async function initialize() {
@@ -232,6 +250,7 @@ export default function WorkspaceClient() {
       setSegments([]);
       setMediaCards([]);
       setTasksMap({});
+      setAudioTasks([]);
       setCovers([]);
       return;
     }
@@ -245,6 +264,7 @@ export default function WorkspaceClient() {
       setOverviewSegments([]);
       setMediaCards([]);
       setTasksMap({});
+      setAudioTasks([]);
       return;
     }
     loadSegments(selectedSceneId).catch((err: unknown) => setError(err instanceof Error ? err.message : "加载 Segment 失败"));
@@ -257,9 +277,11 @@ export default function WorkspaceClient() {
     if (!selectedSegmentId) {
       setMediaCards([]);
       setTasksMap({});
+      setAudioTasks([]);
       return;
     }
     loadMediaCards(selectedSegmentId).catch((err: unknown) => setError(err instanceof Error ? err.message : "加载 Media Card 失败"));
+    loadAudioTasks(selectedSegmentId).catch((err: unknown) => setError(err instanceof Error ? err.message : "加载音频任务失败"));
   }, [selectedSegmentId]);
 
   useEffect(() => {
@@ -442,6 +464,73 @@ export default function WorkspaceClient() {
       setMessage("失败任务已重试");
     } catch (err) {
       setError(err instanceof Error ? err.message : "重试失败");
+    }
+  }
+
+  async function handleSubmitAudio() {
+    clearFeedback();
+    if (!selectedSegmentId) return;
+    const sourceText = (narrationCn || narrationEn).trim();
+    if (!sourceText) {
+      setError("当前 Segment 没有可生成音频的文本");
+      return;
+    }
+
+    try {
+      const payload = await requestJson<ApiDataPayload<{ task: SegmentAudioTask; created: boolean; message: string }>>(`/api/segments/${selectedSegmentId}/audio`, {
+        method: "POST",
+        body: JSON.stringify({ source_text: sourceText })
+      });
+      await loadAudioTasks(selectedSegmentId);
+      setMessage(payload.data.created ? "音频任务已提交" : "当前音频状态不重复提交");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "提交音频任务失败");
+    }
+  }
+
+  async function handleRetryAudio() {
+    clearFeedback();
+    if (!selectedSegmentId) return;
+    const sourceText = (narrationCn || narrationEn).trim();
+
+    try {
+      const payload = await requestJson<ApiDataPayload<{ task: SegmentAudioTask | null; retried: boolean; message: string }>>(`/api/segments/${selectedSegmentId}/audio/retry`, {
+        method: "POST",
+        body: JSON.stringify({ source_text: sourceText })
+      });
+      await loadAudioTasks(selectedSegmentId);
+      setMessage(payload.data.retried ? "音频任务已重试" : "当前音频任务无需重试");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "重试音频任务失败");
+    }
+  }
+
+  async function handleReferenceImagesSelected(card: SegmentMedia, fileList: FileList | null) {
+    clearFeedback();
+    const files = Array.from(fileList ?? []).filter((file) => file.type.startsWith("image/"));
+    if (files.length === 0) {
+      setMessage("未选择图片文件");
+      return;
+    }
+
+    const currentImages = card.reference_images_json;
+    const availableSlots = Math.max(0, 3 - currentImages.length);
+    if (availableSlots === 0) {
+      setMessage("参考图最多 3 张");
+      return;
+    }
+
+    try {
+      const selectedImages = await Promise.all(files.slice(0, availableSlots).map(readImageFileAsDataUrl));
+      const nextImages = [...currentImages, ...selectedImages].slice(0, 3);
+      await requestJson<ApiDataPayload<SegmentMedia>>(`/api/segment-media/${card.media_id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ reference_images_json: nextImages })
+      });
+      await reloadCurrentLayer();
+      setMessage(`已添加参考图：${nextImages.length}/3`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "上传参考图失败");
     }
   }
 
@@ -650,6 +739,23 @@ export default function WorkspaceClient() {
               <button className="primary" onClick={() => void handleSaveNarration()}>
                 保存内容
               </button>
+              <button
+                onClick={() => void handleSubmitAudio()}
+                disabled={latestAudioTask?.task_status === "processing" || latestAudioTask?.task_status === "pending" || latestAudioTask?.task_status === "completed"}
+              >
+                生成音频
+              </button>
+              {latestAudioTask?.task_status === "failed" ? (
+                <button className="danger" onClick={() => void handleRetryAudio()}>
+                  重试音频
+                </button>
+              ) : null}
+            </div>
+            <div className="audio-inline">
+              <span className={latestAudioTask ? taskStatusClass(latestAudioTask.task_status) : "status"}>音频：{latestAudioTask?.task_status ?? "idle"}</span>
+              {latestAudioTask?.provider_task_id ? <span className="small">{latestAudioTask.provider_task_id}</span> : null}
+              {latestAudioTask?.result_url ? <audio controls src={latestAudioTask.result_url} /> : null}
+              {latestAudioTask?.error_message ? <span className="small" style={{ color: "var(--danger)" }}>{latestAudioTask.error_message}</span> : null}
             </div>
           </>
         ) : null}
@@ -694,8 +800,8 @@ export default function WorkspaceClient() {
                       <textarea value={draft.prompt} onChange={(event) => updateMediaDraft(card.media_id, { prompt: event.target.value })} />
                     </label>
 
-                    <div className="inline-actions media-fields media-fields-basic">
-                      <label>
+                    <div className={`media-config-line ${card.media_type === "video" ? "has-video" : ""}`}>
+                      <label className="media-config-field">
                         generate_count
                         <input
                           type="number"
@@ -706,7 +812,7 @@ export default function WorkspaceClient() {
                           onChange={(event) => updateMediaDraft(card.media_id, { generate_count: Number(event.target.value) })}
                         />
                       </label>
-                      <label>
+                      <label className="media-config-field">
                         provider
                         <select
                           value={allowedProviderForMediaType(card.media_type)}
@@ -719,29 +825,26 @@ export default function WorkspaceClient() {
                           <option value={allowedProviderForMediaType(card.media_type)}>{allowedProviderForMediaType(card.media_type)}</option>
                         </select>
                       </label>
-                      <label>
+                      <label className="media-config-field">
                         model
                         <input value={draft.model} onChange={(event) => updateMediaDraft(card.media_id, { model: event.target.value })} />
                       </label>
-                    </div>
-
-                    <div className="inline-actions media-fields media-fields-advanced">
                       {card.media_type === "video" ? (
-                        <label>
+                        <label className="media-config-field">
                           duration
                           <input type="number" min={4} max={12} value={draft.duration ?? ""} onChange={(event) => updateMediaDraft(card.media_id, { duration: event.target.value ? Number(event.target.value) : null })} />
                         </label>
                       ) : null}
-                      <label>
+                      <label className="media-config-field">
                         aspect_ratio
                         <input value={draft.aspect_ratio} onChange={(event) => updateMediaDraft(card.media_id, { aspect_ratio: event.target.value })} />
                       </label>
-                      <label>
+                      <label className="media-config-field">
                         resolution
                         <input value={draft.resolution} onChange={(event) => updateMediaDraft(card.media_id, { resolution: event.target.value })} />
                       </label>
                       {card.media_type === "video" ? (
-                        <label>
+                        <label className="media-config-field media-config-checkbox">
                           audio
                           <input type="checkbox" checked={draft.audio} onChange={(event) => updateMediaDraft(card.media_id, { audio: event.target.checked })} />
                         </label>
@@ -762,7 +865,34 @@ export default function WorkspaceClient() {
                   ) : null}
                 </div>
 
-                <div className="meta">参考图数量：{card.reference_images_json.length}</div>
+                <div className="reference-strip">
+                  <div className="reference-strip-header">
+                    <span className="meta">参考图：{card.reference_images_json.length}/3</span>
+                    <button type="button" onClick={() => referenceInputRefs.current[card.media_id]?.click()} disabled={card.reference_images_json.length >= 3}>
+                      上传参考图
+                    </button>
+                    <input
+                      ref={(node) => {
+                        referenceInputRefs.current[card.media_id] = node;
+                      }}
+                      className="sr-only-input"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(event) => {
+                        void handleReferenceImagesSelected(card, event.target.files);
+                        event.target.value = "";
+                      }}
+                    />
+                  </div>
+                  {card.reference_images_json.length > 0 ? (
+                    <div className="reference-thumbs">
+                      {card.reference_images_json.map((imageUrl, index) => (
+                        <img key={`${card.media_id}-ref-${index}`} src={imageUrl} alt={`${card.media_id} reference ${index + 1}`} />
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               </article>
             );
           })}

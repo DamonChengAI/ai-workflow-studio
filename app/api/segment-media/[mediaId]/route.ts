@@ -15,7 +15,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ me
         duration: typeof body.duration === "number" || body.duration === null ? body.duration : undefined,
         aspect_ratio: typeof body.aspect_ratio === "string" ? body.aspect_ratio : undefined,
         resolution: typeof body.resolution === "string" ? body.resolution : undefined,
-        audio: typeof body.audio === "boolean" || body.audio === null ? body.audio : undefined
+        audio: typeof body.audio === "boolean" || body.audio === null ? body.audio : undefined,
+        reference_images_json: Array.isArray(body.reference_images_json) ? body.reference_images_json.filter((item): item is string => typeof item === "string").slice(0, 3) : undefined
       })
     );
   } catch (error) {

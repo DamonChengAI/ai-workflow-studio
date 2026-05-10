@@ -1,6 +1,6 @@
 import { initialSample, initialSettings } from "./mock-data";
 import { resetMockProvider } from "./mock-provider";
-import type { AppSettings, IdeaCover, MediaTask, Scene, Segment, SegmentMedia } from "./types";
+import type { AppSettings, IdeaCover, MediaTask, Scene, Segment, SegmentAudioTask, SegmentMedia } from "./types";
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -13,6 +13,7 @@ export interface MockState {
   segments: Segment[];
   mediaCards: SegmentMedia[];
   mediaTasks: MediaTask[];
+  audioTasks: SegmentAudioTask[];
   covers: IdeaCover[];
 }
 
@@ -26,6 +27,7 @@ function createInitialState(): MockState {
     segments: clone(initialSample.segments),
     mediaCards: clone(initialSample.media_cards),
     mediaTasks: [],
+    audioTasks: [],
     covers: clone(initialSample.covers)
   };
 }
@@ -56,6 +58,11 @@ export function listScenes(idea_id?: string | null) {
 export function listSegments(scene_id?: string | null) {
   const items = scene_id ? state.segments.filter((segment) => segment.scene_id === scene_id) : state.segments;
   return clone(items.sort((a, b) => a.tab_order - b.tab_order));
+}
+
+export function getSegment(segment_id: string) {
+  const segment = state.segments.find((item) => item.segment_id === segment_id);
+  return segment ? clone(segment) : null;
 }
 
 export function updateSegment(segment_id: string, patch: Partial<Segment>) {
@@ -97,6 +104,23 @@ export function updateTask(media_task_id: string, patch: Partial<MediaTask>) {
   if (index === -1) throw new Error(`Media task not found: ${media_task_id}`);
   state.mediaTasks[index] = { ...state.mediaTasks[index], ...patch, updated_at: new Date().toISOString() };
   return clone(state.mediaTasks[index]);
+}
+
+export function listAudioTasks(segment_id?: string | null) {
+  const items = segment_id ? state.audioTasks.filter((task) => task.segment_id === segment_id) : state.audioTasks;
+  return clone(items.sort((a, b) => a.created_at.localeCompare(b.created_at)));
+}
+
+export function addAudioTask(task: SegmentAudioTask) {
+  state.audioTasks.push(clone(task));
+  return clone(task);
+}
+
+export function updateAudioTask(audio_task_id: string, patch: Partial<SegmentAudioTask>) {
+  const index = state.audioTasks.findIndex((task) => task.audio_task_id === audio_task_id);
+  if (index === -1) throw new Error(`Audio task not found: ${audio_task_id}`);
+  state.audioTasks[index] = { ...state.audioTasks[index], ...patch, updated_at: new Date().toISOString() };
+  return clone(state.audioTasks[index]);
 }
 
 export function listCovers(idea_id: string) {

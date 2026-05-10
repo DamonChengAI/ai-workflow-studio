@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { resetStore } from "../lib/mock-store";
-import { pollRunningTasks, retryMedia, submitMedia } from "../lib/workflow-service";
+import { pollRunningTasks, retryMedia, retrySegmentAudio, submitMedia, submitSegmentAudio } from "../lib/workflow-service";
 
 describe("workflow-service", () => {
   beforeEach(() => {
@@ -46,5 +46,26 @@ describe("workflow-service", () => {
     const duplicate = submitMedia("MEDIA_001");
     expect(duplicate.created).toBe(false);
     expect(duplicate.tasks).toHaveLength(1);
+  });
+
+  it("segment audio task completes through polling", () => {
+    const result = submitSegmentAudio("SEG_001", "测试音频文本");
+    expect(result.created).toBe(true);
+    expect(result.task.task_status).toBe("processing");
+    expect(pollRunningTasks().audio_tasks[0].task_status).toBe("processing");
+    const completed = pollRunningTasks();
+    expect(completed.audio_tasks[0].task_status).toBe("completed");
+    expect(completed.audio_tasks[0].result_url).toBe("/mock-assets/mock-audio.wav");
+  });
+
+  it("failed segment audio task can retry", () => {
+    submitSegmentAudio("SEG_001", "测试音频文本 [FAIL]");
+    pollRunningTasks();
+    expect(pollRunningTasks().audio_tasks[0].task_status).toBe("failed");
+    const retry = retrySegmentAudio("SEG_001");
+    expect(retry.retried).toBe(true);
+    pollRunningTasks();
+    const completed = pollRunningTasks();
+    expect(completed.audio_tasks[0].task_status).toBe("completed");
   });
 });

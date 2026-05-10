@@ -71,6 +71,18 @@ export interface MediaTask {
   updated_at: string;
 }
 
+export interface SegmentAudioTask {
+  audio_task_id: string;
+  segment_id: string;
+  provider_task_id: string;
+  task_status: MediaTaskStatus;
+  source_text: string;
+  result_url: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AppSettings {
   output_base_dir: string;
   auto_poll_enabled: boolean;
