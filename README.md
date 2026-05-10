@@ -1,39 +1,41 @@
 # AI Workflow Studio
 
-`AI Workflow Studio` is a mock-only public showcase of an AI production workspace. It reuses the information architecture of an internal workspace MVP and preserves the core generation flow:
+> English version: [README.en.md](README.en.md)
+
+`AI Workflow Studio` 是一个 mock-only 的 AI 生产工作台公开 showcase。它复用原 Workspace MVP 的信息架构，保留主生成流程：
 
 ```text
 Idea -> Scene -> Segment -> Media Card -> Media Task
 ```
 
-The public version does not include real business logic, real providers, real assets, real outputs, real secrets, or local paths. All data is sample data, and every generation task is completed by a mock provider. The repository includes generic static mock images to demonstrate `preview_url` write-back; these images do not come from any real project assets.
+公开版不包含真实业务逻辑、真实供应商、真实素材、真实输出、真实密钥或本地路径。所有数据都是 sample data，所有生成任务都由 mock provider 完成。仓库内包含一组通用静态 mock 图片，用来展示 `preview_url` 回写后的视觉效果；这些图片不来自真实项目素材。
 
-The repository includes two fully fictional demo datasets:
+仓库内置两组完全虚构的 demo 数据：
 
-- `AI Workflow Production Desk`: demonstrates schema design, task state, polling, failed/retry handling, and preview write-back.
-- `Xiaohongshu Content Workflow`: demonstrates how a graphic-content Agent can reuse the same Idea / Scene / Segment / Media Card structure.
+- `AI Workflow Production Desk`：展示 schema、任务状态、轮询、失败重试和 preview 回写。
+- `Xiaohongshu Content Workflow`：展示图文内容 Agent 如何复用同一套 Idea / Scene / Segment / Media Card 结构。
 
-## Why This Exists
+## 为什么做这个项目
 
-A complex AI production workflow is not just one model call. One idea can contain multiple scenes and segments. Each segment may need image, video, and voiceover assets, and each asset may become a separate generation task with its own prompt, constraints, provider type, task state, failure mode, retry action, and preview write-back target.
+复杂 AI 生产流程不只是一次模型调用。一个 idea 可能包含多个 scene 和 segment，每个 segment 又可能需要图片、视频、旁白等素材，每个素材都可能成为一个独立生成任务，并带有自己的 prompt、约束、provider 类型、任务状态、失败模式、重试动作和预览回写位置。
 
-AI Workflow Studio models this flow around the `Media Card`. A Media Card is the production contract for one generated asset: it describes what to generate, which prompt to use, which provider type should handle it, what input constraints apply, and where the result should be written back.
+AI Workflow Studio 围绕 `Media Card` 建模。Media Card 是单个素材生成任务的生产合约：描述要生成什么、使用什么 prompt、由哪类 provider 处理、有哪些输入限制，以及生成结果应该回写到哪里。
 
-The public version stays mock-only so the workflow structure, validation, polling, retry handling, and preview updates can be reviewed without exposing real content, providers, assets, credentials, or local paths.
+公开版保持 mock-only，让 workflow 结构、校验、轮询、失败重试和 preview 回写可以被直接审阅，同时不暴露真实内容、供应商、素材、凭证或本地路径。
 
-## What This Demonstrates
+## 这个项目展示什么
 
-- Multi-level AI production object modeling.
-- Media Card as the production contract for generation tasks.
-- Mock provider submission.
-- Task polling.
-- `aggregate_status` updates.
-- Failed task state and retry handling.
-- `preview_url` write-back.
-- Static mock visual assets.
-- Validator, CLI, tests, and agent-friendly checks.
+- 多层 AI 生产对象建模。
+- Media Card 作为生成任务的生产合约。
+- mock provider submit。
+- task polling。
+- `aggregate_status` 更新。
+- failed 状态和 retry 处理。
+- `preview_url` 回写。
+- 静态 mock 视觉资产。
+- validator、CLI、测试和 agent-friendly checks。
 
-## What This Project Does Not Claim
+## 这个项目不声称什么
 
 - It does not claim to be a differentiated video generation product.
 - It does not include real content operations.
@@ -41,52 +43,52 @@ The public version stays mock-only so the workflow structure, validation, pollin
 - It does not include growth metrics or commercial results.
 - It is a technical product sandbox for workflow decomposition and task-state design.
 
-## Run Locally
+## 本地运行
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open:
+打开：
 
 ```text
 http://localhost:3000/workspace
 ```
 
-Engineering check:
+工程检查：
 
 ```bash
 npm run check
 ```
 
-## Demo Path
+## Demo 路径
 
-1. Open `/workspace`.
-2. Use the copy-all action to copy the full Scene / Segment content.
-3. Select a Scene and Segment.
-4. Review the current Segment's Media Card.
-5. Edit the Prompt and save the card.
-6. Submit the current media card to the mock provider.
-7. Poll running tasks twice and observe `processing -> completed`.
-8. Switch to a video card containing `[FAIL]`, submit it, and poll it to `failed`.
-9. Retry the failed task, then poll it to `completed`.
+1. 打开 `/workspace`。
+2. 使用复制全部内容的操作，复制完整 Scene / Segment 内容。
+3. 选择 Scene 和 Segment。
+4. 查看当前 Segment 的 Media Card。
+5. 修改 Prompt 并保存卡片。
+6. 将当前 media card 提交给 mock provider。
+7. 轮询运行中的任务两次，观察 `processing -> completed`。
+8. 切到带 `[FAIL]` 的 video card，提交并轮询到 `failed`。
+9. 重试失败任务，再轮询到 `completed`。
 
-## Privacy Boundary
+## 隐私边界
 
-The public version does not include:
+公开版不包含：
 
-- Real business strategy.
-- Real content topics.
-- Real people or personal assets.
-- Real providers.
-- Real APIs.
-- Real secrets.
-- Real object storage.
-- Real output files.
-- Real operations data.
-- Local absolute paths.
+- 真实业务策略。
+- 真实内容主题。
+- 真实人物或个人素材。
+- 真实 provider。
+- 真实 API。
+- 真实密钥。
+- 真实对象存储。
+- 真实输出文件。
+- 真实运营数据。
+- 本地绝对路径。
 
-## License
+## 授权
 
 MIT License. See [LICENSE](LICENSE).
