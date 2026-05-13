@@ -138,6 +138,7 @@ export default function WorkspaceClient() {
   const selectedScene = useMemo(() => scenes.find((item) => item.scene_id === selectedSceneId) ?? null, [scenes, selectedSceneId]);
   const selectedSegment = useMemo(() => segments.find((item) => item.segment_id === selectedSegmentId) ?? null, [segments, selectedSegmentId]);
   const latestAudioTask = useMemo(() => audioTasks.at(-1) ?? null, [audioTasks]);
+  const coverImageCandidates = useMemo(() => covers.filter((cover) => cover.cover_image_url || cover.is_active_cover === 1), [covers]);
 
   function clearFeedback() {
     setMessage("");
@@ -175,7 +176,7 @@ export default function WorkspaceClient() {
     const payload = await requestJson<ApiListPayload<Idea>>("/api/ideas");
     const items = payload.data.items;
     setIdeas(items);
-    setSelectedIdeaId((prev) => (prev && items.some((item) => item.idea_id === prev) ? prev : items[0]?.idea_id ?? ""));
+    setSelectedIdeaId((prev) => (prev && items.some((item) => item.idea_id === prev) ? prev : items.find((item) => item.idea_id === "IDEA_001")?.idea_id ?? items[0]?.idea_id ?? ""));
   }
 
   async function loadScenes(ideaId: string) {
@@ -638,7 +639,7 @@ export default function WorkspaceClient() {
         <section className="panel">
           <h2 className="section-title">封面</h2>
           <div className="scene-list">
-            {covers.map((cover) => (
+            {coverImageCandidates.map((cover) => (
               <article key={cover.cover_id} className={`scene-card ${cover.is_active_cover === 1 ? "active" : ""}`}>
                 <div className="row">
                   <strong>{cover.cover_text}</strong>
