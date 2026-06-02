@@ -18,7 +18,6 @@
     "security:check": "tsx scripts/security-check.ts",
     "video:report": "tsx scripts/render-video-run-report.ts",
     "hook:check": "tsx scripts/hook-check.ts",
-    "real-video:smoke": "tsx scripts/real-video-smoke.ts",
     "check": "npm run build && npm run validate && npm run demo && npm run video:export && npm run video:compose && npm run video:check && npm run security:check && npm run video:report && npm run hook:check && npm test",
     "test": "vitest run"
   },

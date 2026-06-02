@@ -35,7 +35,7 @@ try {
 
 if (storyboard) {
   checks.push(item("storyboard:theme", storyboard.theme === "快来购买豆包高级套餐吧！", storyboard.theme));
-  checks.push(item("storyboard:item_count", storyboard.items.length >= 6, String(storyboard.items.length)));
+  checks.push(item("storyboard:item_count", storyboard.items.length === 3, String(storyboard.items.length)));
   checks.push(item("storyboard:duration", storyboard.total_duration_seconds >= 28 && storyboard.total_duration_seconds <= 32, String(storyboard.total_duration_seconds)));
   for (const storyboardItem of storyboard.items) {
     checks.push(item(`storyboard:image:${storyboardItem.order}`, existsProjectPath(storyboardItem.image_asset), storyboardItem.image_asset));
@@ -56,18 +56,20 @@ if (process.env.REQUIRE_RESEARCH === "1") {
 
 if (existsProjectPath(videoRunFiles.finalVideoManifest)) {
   try {
-    const finalManifest = readJson<{ final_video?: { path?: string; duration_seconds?: number }; real_provider_overlay?: boolean }>(videoRunFiles.finalVideoManifest);
+    const finalManifest = readJson<{
+      final_video?: { path?: string; duration_seconds?: number };
+      real_provider_images?: string[];
+      uses_provider_video?: boolean;
+      storyboard_items?: number;
+    }>(videoRunFiles.finalVideoManifest);
     const videoPath = finalManifest.final_video?.path ?? "";
     const duration = finalManifest.final_video?.duration_seconds ?? 0;
     checks.push(item("final_video:path", Boolean(videoPath) && existsProjectPath(videoPath), videoPath || "missing"));
     checks.push(item("final_video:duration", duration >= 28 && duration <= 32, String(duration)));
-    checks.push(
-      item(
-        "real_provider:overlay",
-        process.env.REQUIRE_REAL_VIDEO === "1" ? finalManifest.real_provider_overlay === true : true,
-        finalManifest.real_provider_overlay ? "present" : "not_present"
-      )
-    );
+    checks.push(item("final_video:image_count", finalManifest.storyboard_items === 3, String(finalManifest.storyboard_items ?? "missing")));
+    checks.push(item("final_video:no_provider_video", finalManifest.uses_provider_video === false, String(finalManifest.uses_provider_video)));
+    const realImages = finalManifest.real_provider_images ?? [];
+    checks.push(item("real_provider:images", process.env.REQUIRE_REAL_IMAGES === "1" ? realImages.length === 3 : true, String(realImages.length)));
   } catch (error) {
     checks.push(item("final_video:manifest", false, error instanceof Error ? error.message : String(error)));
   }
@@ -75,8 +77,13 @@ if (existsProjectPath(videoRunFiles.finalVideoManifest)) {
   checks.push(item("final_video:manifest", false, "missing"));
 }
 
-if (process.env.REQUIRE_REAL_VIDEO === "1") {
+if (process.env.REQUIRE_REAL_IMAGES === "1") {
   checks.push(item("real_provider:manifest", existsProjectPath(videoRunFiles.realProviderManifest), videoRunFiles.realProviderManifest));
+  if (existsProjectPath(videoRunFiles.realProviderManifest)) {
+    const realManifest = readJson<{ ok?: boolean; media_type?: string; images?: Array<{ ok?: boolean; path?: string | null }> }>(videoRunFiles.realProviderManifest);
+    checks.push(item("real_provider:type", realManifest.media_type === "image", String(realManifest.media_type)));
+    checks.push(item("real_provider:image_count", (realManifest.images ?? []).filter((image) => image.ok && image.path).length === 3, String((realManifest.images ?? []).filter((image) => image.ok && image.path).length)));
+  }
 }
 
 const ok = checks.every((check) => check.ok);

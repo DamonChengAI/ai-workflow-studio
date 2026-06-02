@@ -8,8 +8,8 @@ import { outputDir, videoRunFiles, writeJson, writeText, type StoryboardFile } f
 
 const theme = process.env.VIDEO_TITLE ?? "快来购买豆包高级套餐吧！";
 const targetDurationSeconds = 30;
-const segmentIds = ["SEG_001", "SEG_002", "SEG_003", "SEG_004"];
-const mediaIds = ["MEDIA_001", "MEDIA_002", "MEDIA_003", "MEDIA_004"];
+const segmentIds = ["SEG_001", "SEG_002", "SEG_003"];
+const mediaIds = ["MEDIA_001", "MEDIA_002", "MEDIA_003"];
 
 function record(events: unknown[], action: string, value: unknown) {
   events.push({
@@ -86,47 +86,29 @@ const storyboard: StoryboardFile = {
       order: 1,
       segment_id: "INTRO",
       title: "开场：为什么要看高级套餐",
-      duration_seconds: 5,
+      duration_seconds: 10,
       image_asset: "public/mock-assets/COVER_001.png",
       audio_manifest_path: "outputs/video-run/audio/01-intro.wav",
       narration_cn: "快来看看豆包高级套餐吧。先用最新公开信息核对权益，再判断它是不是适合你的 AI 工作流。",
       product_point: "评测模型是否先联网核对信息，而不是直接编广告。"
     },
-    ...mediaIds.map((mediaId, index) => {
-      const media = mediaById.get(mediaId);
-      const segment = media ? segmentById.get(media.segment_id) : null;
-      const titles = ["最新信息来源", "核心权益和价值点", "适合哪些使用场景", "失败处理和信息校验"];
-      const narrations = [
-        "第一步看来源：优先查官方页面和公开渠道，把套餐名称、权益、价格和限制条件分开记录。",
-        "第二步看价值：如果你高频写作、搜索、生成图片或处理长任务，高级套餐的意义在于更稳定的能力和更少的等待。",
-        "第三步看场景：学生做资料整理，创作者做脚本和图片，职场用户做总结和方案，都可以用豆包提高日常效率。",
-        "第四步看风险：套餐权益可能更新，购买前要回到官方页面确认价格、有效期和可用范围。"
-      ];
-      return {
-        order: index + 2,
-        segment_id: segment?.segment_id ?? mediaId,
-        title: titles[index] ?? segment?.title ?? mediaId,
-        duration_seconds: 5,
-        image_asset: `public/mock-assets/${mediaId}.png`,
-        audio_manifest_path: `outputs/video-run/audio/${String(index + 2).padStart(2, "0")}-${segment?.segment_id ?? mediaId}.wav`,
-        narration_cn: narrations[index] ?? segment?.narration_cn ?? "",
-        product_point:
-          index === 0
-            ? "看模型是否留下公开来源和访问日期。"
-            : index === 1
-              ? "看模型是否把套餐信息翻译成用户价值。"
-              : index === 2
-                ? "看模型是否能从产品场景组织视频脚本。"
-                : "看模型是否处理不确定信息和复验。"
-      };
-    }),
     {
-      order: 6,
-      segment_id: "SEG_004_RECOVERY",
-      title: "购买提醒和交付复盘",
-      duration_seconds: 5,
-      image_asset: "public/mock-assets/MEDIA_005.png",
-      audio_manifest_path: "outputs/video-run/audio/06-recovery.wav",
+      order: 2,
+      segment_id: "VALUE",
+      title: "核心权益和使用场景",
+      duration_seconds: 10,
+      image_asset: "public/mock-assets/MEDIA_001.png",
+      audio_manifest_path: "outputs/video-run/audio/02-value.wav",
+      narration_cn: "如果你高频写作、搜索、生成图片或处理长任务，高级套餐的意义在于更稳定的能力和更少的等待。",
+      product_point: "看模型是否把检索到的套餐信息翻译成用户价值。"
+    },
+    {
+      order: 3,
+      segment_id: "CTA",
+      title: "购买提醒和风险边界",
+      duration_seconds: 10,
+      image_asset: "public/mock-assets/MEDIA_002.png",
+      audio_manifest_path: "outputs/video-run/audio/03-cta.wav",
       narration_cn: "如果你每天都在用 AI 处理学习、创作和工作，豆包高级套餐值得认真比较。下单前记得以官方最新页面为准。",
       product_point: "看模型是否能把 trace 变成产品风险和下一步判断。"
     }
@@ -197,7 +179,7 @@ const mediaPlan = {
   audio_assets: storyboard.items.map((item) => item.audio_manifest_path),
   real_provider_video: videoRunFiles.realProviderManifest,
   required_outputs: Object.values(videoRunFiles),
-  note: "All paths are project-relative and mock-only."
+  note: "All paths are project-relative. The final video must be stitched from three image assets, not provider video."
 };
 
 writeText(

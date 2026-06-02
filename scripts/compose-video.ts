@@ -31,14 +31,15 @@ const tempVideo = path.join(composeDir, "silent-video.mp4");
 const tempAudio = path.join(composeDir, "combined-audio.wav");
 const baseVideoWithAudio = path.join(composeDir, "mock-workflow-video.mp4");
 const finalVideo = path.join(outputDir, "final-video.mp4");
-const realProviderVideo = path.join(outputDir, "real-provider", "real-provider-video.mp4");
+const realProviderImageDir = path.join(outputDir, "real-provider-images");
 
 const imageConcatLines: string[] = [];
 const audioConcatLines: string[] = [];
 const generatedAudio: string[] = [];
 
 storyboard.items.forEach((item, index) => {
-  const imagePath = path.join(process.cwd(), item.image_asset);
+  const realImagePath = path.join(realProviderImageDir, `${String(item.order).padStart(2, "0")}.png`);
+  const imagePath = fs.existsSync(realImagePath) ? realImagePath : path.join(process.cwd(), item.image_asset);
   if (!fs.existsSync(imagePath)) {
     throw new Error(`Missing storyboard image: ${item.image_asset}`);
   }
@@ -87,42 +88,14 @@ run("ffmpeg", [
 run("ffmpeg", ["-y", "-f", "concat", "-safe", "0", "-i", audioConcatFile, "-c", "copy", tempAudio]);
 
 run("ffmpeg", ["-y", "-i", tempVideo, "-i", tempAudio, "-c:v", "copy", "-c:a", "aac", "-shortest", baseVideoWithAudio]);
-
-let source = "mock_assets_only";
-let realProviderOverlay = false;
-
-if (fs.existsSync(realProviderVideo)) {
-  run("ffmpeg", [
-    "-y",
-    "-i",
-    baseVideoWithAudio,
-    "-i",
-    realProviderVideo,
-    "-filter_complex",
-    "[1:v]trim=duration=5,setpts=PTS-STARTPTS,scale=420:236:force_original_aspect_ratio=decrease,pad=420:236:(ow-iw)/2:(oh-ih)/2,format=yuv420p[rv];[0:v][rv]overlay=W-w-32:32:enable='between(t,0,5)'[v]",
-    "-map",
-    "[v]",
-    "-map",
-    "0:a:0?",
-    "-c:v",
-    "libx264",
-    "-c:a",
-    "copy",
-    "-shortest",
-    finalVideo
-  ]);
-  source = "mock_assets_with_real_provider_overlay";
-  realProviderOverlay = true;
-} else {
-  fs.copyFileSync(baseVideoWithAudio, finalVideo);
-}
+fs.copyFileSync(baseVideoWithAudio, finalVideo);
 
 const duration = ffprobeDuration(finalVideo);
 for (const tempFile of [imageConcatFile, audioConcatFile]) {
   if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
 }
 const manifest = {
-  mock_only: true,
+  mock_only: !storyboard.items.every((item) => fs.existsSync(path.join(realProviderImageDir, `${String(item.order).padStart(2, "0")}.png`))),
   redacted: true,
   final_video: {
     path: toProjectPath(finalVideo),
@@ -131,14 +104,22 @@ const manifest = {
     resolution: "1280x720",
     audio: true
   },
-  source,
-  real_provider_overlay: realProviderOverlay,
-  real_provider_video: realProviderOverlay ? toProjectPath(realProviderVideo) : null,
+  source: storyboard.items.every((item) => fs.existsSync(path.join(realProviderImageDir, `${String(item.order).padStart(2, "0")}.png`)))
+    ? "real_provider_images"
+    : "image_assets_with_mock_fallback",
+  uses_provider_video: false,
+  real_provider_images: storyboard.items
+    .map((item) => path.join(realProviderImageDir, `${String(item.order).padStart(2, "0")}.png`))
+    .filter((filePath) => fs.existsSync(filePath))
+    .map(toProjectPath),
   storyboard_items: storyboard.items.length,
-  image_assets: storyboard.items.map((item) => item.image_asset),
+  image_assets: storyboard.items.map((item) => {
+    const realImagePath = path.join(realProviderImageDir, `${String(item.order).padStart(2, "0")}.png`);
+    return fs.existsSync(realImagePath) ? toProjectPath(realImagePath) : item.image_asset;
+  }),
   audio_assets: generatedAudio,
   compose_tool: "ffmpeg",
-  note: "Local mock assets only. No provider URL, secret, env content, or absolute path is written."
+  note: "Video is stitched from three image assets only. No provider video URL, secret, env content, or absolute path is written."
 };
 
 writeJson(path.join(process.cwd(), videoRunFiles.finalVideoManifest), manifest);

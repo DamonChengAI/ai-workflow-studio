@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { outputDir, sanitizeText, toProjectPath, videoRunFiles, writeJson } from "./video-workflow-shared";
+import { readJson, outputDir, sanitizeText, toProjectPath, videoRunFiles, writeJson, type StoryboardFile } from "./video-workflow-shared";
 
 type TaskStatus = "pending" | "processing" | "completed" | "failed" | "cancelled";
 type JsonRecord = Record<string, unknown>;
@@ -90,31 +90,31 @@ function extractResultUrl(data: JsonRecord): string | null {
   for (const record of candidates) {
     const direct =
       asString(record.url) ??
-      asString(record.video_url) ??
+      asString(record.image_url) ??
       asString(record.download_url) ??
       firstStringInArray(record.urls) ??
-      firstStringInArray(record.video_urls);
+      firstStringInArray(record.image_urls);
     if (direct) return direct;
 
     const output = asRecord(record.output);
     if (output) {
       const nestedUrl =
         asString(output.url) ??
-        asString(output.video_url) ??
+        asString(output.image_url) ??
         firstStringInArray(output.urls) ??
-        firstStringInArray(output.video_urls);
+        firstStringInArray(output.image_urls);
       if (nestedUrl) return nestedUrl;
     }
 
     const result = asRecord(record.result);
-    const firstVideo = firstRecordInArray(result?.videos);
-    if (firstVideo) {
-      const videoUrl =
-        asString(firstVideo.url) ??
-        firstStringInArray(firstVideo.url) ??
-        asString(firstVideo.video_url) ??
-        firstStringInArray(firstVideo.video_url);
-      if (videoUrl) return videoUrl;
+    const firstImage = firstRecordInArray(result?.images);
+    if (firstImage) {
+      const imageUrl =
+        asString(firstImage.url) ??
+        firstStringInArray(firstImage.url) ??
+        asString(firstImage.image_url) ??
+        firstStringInArray(firstImage.image_url);
+      if (imageUrl) return imageUrl;
     }
   }
   return null;
@@ -125,7 +125,7 @@ function publicError(data: JsonRecord): string | null {
   return asString(data.message) ?? asString(data.error) ?? asString(nested?.message) ?? asString(nested?.error);
 }
 
-async function readJson(response: Response): Promise<JsonRecord> {
+async function parseResponseJson(response: Response): Promise<JsonRecord> {
   return (await response.json().catch(() => ({}))) as JsonRecord;
 }
 
@@ -145,37 +145,22 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function readExistingManifest(manifestPath: string) {
-  if (!fs.existsSync(manifestPath)) return null;
-  return JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
-    ok?: boolean;
-    task_id?: string;
-    video?: { path?: string | null };
-  };
-}
-
-async function submitVideo(submitUrl: string, apiKey: string, model: string) {
-  const title = process.env.VIDEO_TITLE ?? "快来购买豆包高级套餐吧！";
-  const body = {
-    model,
-    prompt:
-      `A polished 5-second Chinese product promo video opening card titled "${title}". Show a clean modern AI assistant membership upgrade scene, premium plan card, productivity icons for writing, search, image generation, and work summaries. No real people, no logos, no sensitive text, no unverifiable price claims.`,
-    image_urls: [],
-    duration: 5,
-    aspect_ratio: "16:9",
-    resolution: "720p",
-    audio: true
-  };
-
+async function submitImage(submitUrl: string, apiKey: string, model: string, prompt: string) {
   const response = await fetch(submitUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify({
+      model,
+      prompt,
+      image_urls: [],
+      size: "16:9",
+      resolution: "1K"
+    })
   });
-  const data = await readJson(response);
+  const data = await parseResponseJson(response);
   const taskId = extractTaskId(data);
   if (!response.ok || !taskId) {
     throw new Error(`submit_failed status=${response.status} message=${sanitizeText(publicError(data) ?? "unknown")}`);
@@ -191,7 +176,7 @@ async function getStatus(baseUrl: string, statusBasePath: string, taskId: string
       Authorization: `Bearer ${apiKey}`
     }
   });
-  const data = await readJson(response);
+  const data = await parseResponseJson(response);
   if (!response.ok) {
     throw new Error(`status_failed status=${response.status} message=${sanitizeText(publicError(data) ?? "unknown")}`);
   }
@@ -202,7 +187,7 @@ async function getStatus(baseUrl: string, statusBasePath: string, taskId: string
   };
 }
 
-async function downloadVideo(resultUrl: string, outputPath: string) {
+async function downloadImage(resultUrl: string, outputPath: string) {
   const response = await fetch(resultUrl);
   if (!response.ok) throw new Error(`download_failed status=${response.status}`);
   const bytes = Buffer.from(await response.arrayBuffer());
@@ -210,130 +195,132 @@ async function downloadVideo(resultUrl: string, outputPath: string) {
   return bytes.length;
 }
 
+function promptFor(item: StoryboardFile["items"][number]) {
+  return [
+    `Create a 16:9 Chinese product promo image for the video titled "${item.title}".`,
+    "Subject: Doubao premium plan membership purchase recommendation.",
+    `Narration idea: ${item.narration_cn}`,
+    "Style: clean AI productivity product visual, premium but restrained, modern cards, no real people, no logos, no unverifiable price text, no fake app screenshots.",
+    "Keep text minimal and generic; do not display exact price or plan rights unless provided by official public source."
+  ].join(" ");
+}
+
 async function main() {
   const loadedEnvFiles = envCandidates.filter((candidate) => loadEnvFile(candidate));
-  const realDir = path.join(outputDir, "real-provider");
-  const videoPath = path.join(realDir, "real-provider-video.mp4");
+  const imageDir = path.join(outputDir, "real-provider-images");
   const manifestPath = path.join(process.cwd(), videoRunFiles.realProviderManifest);
-  fs.mkdirSync(realDir, { recursive: true });
+  fs.mkdirSync(imageDir, { recursive: true });
 
-  const existingManifest = readExistingManifest(manifestPath);
-  if (existingManifest?.ok && existingManifest.video?.path && fs.existsSync(path.join(process.cwd(), existingManifest.video.path))) {
+  const storyboard = readJson<StoryboardFile>(videoRunFiles.storyboard);
+  const existingImages = storyboard.items
+    .map((item) => path.join(imageDir, `${String(item.order).padStart(2, "0")}.png`))
+    .filter((filePath) => fs.existsSync(filePath));
+  if (existingImages.length === storyboard.items.length && fs.existsSync(manifestPath)) {
     console.log("real-media:smoke skipped");
-    console.log("reason=completed_manifest_exists");
+    console.log("reason=completed_image_manifest_exists");
     return;
   }
 
   const baseUrl = requiredEnv("APIMART_BASE_URL");
   const apiKey = requiredEnv("APIMART_API_KEY");
-  const model = process.env.REAL_VIDEO_MODEL ?? "doubao-seedance-1-5-pro";
-  const videoApiPath = process.env.VIDEO_API_PATH ?? "/v1/videos/generations";
+  const model = process.env.REAL_IMAGE_MODEL ?? "gemini-3-pro-image-preview";
+  const imageApiPath = process.env.IMAGE_API_PATH ?? "/v1/images/generations";
   const rawStatusPath = process.env.TASK_STATUS_API_PATH ?? "/v1/tasks";
   const statusBasePath = rawStatusPath.endsWith("/") ? rawStatusPath.slice(0, -1) : rawStatusPath;
-  const pollAttempts = numberFromEnv("REAL_VIDEO_MAX_POLL_ATTEMPTS", 30, 30);
-  const submitRetries = numberFromEnv("REAL_VIDEO_MAX_SUBMIT_RETRIES", 3, 30);
-  const pollIntervalMs = numberFromEnv("REAL_VIDEO_POLL_INTERVAL_MS", 15000, 60000);
-  const taskIdArgIndex = process.argv.indexOf("--task-id");
-  const initialTaskId = taskIdArgIndex >= 0 ? process.argv[taskIdArgIndex + 1] : existingManifest?.task_id;
+  const pollRounds = numberFromEnv("REAL_IMAGE_MAX_POLL_ROUNDS", 30, 30);
+  const submitRetries = numberFromEnv("REAL_IMAGE_MAX_SUBMIT_RETRIES", 3, 30);
+  const pollIntervalMs = numberFromEnv("REAL_IMAGE_POLL_INTERVAL_MS", 10000, 60000);
 
   if (baseUrl === "mock") throw new Error("APIMART_BASE_URL points to mock mode");
 
-  const submitUrl = new URL(videoApiPath, baseUrl).toString();
+  const submitUrl = new URL(imageApiPath, baseUrl).toString();
   const attempts: Array<Record<string, unknown>> = [];
-  let taskId = initialTaskId ?? null;
-  let lastStatus: TaskStatus | "not_submitted" = "not_submitted";
-  let downloadedBytes = 0;
+  const tasks = new Map<number, { task_id: string; status: TaskStatus; result_url: string | null; output_path: string }>();
 
-  for (let submitAttempt = taskId ? 0 : 1; submitAttempt <= submitRetries; submitAttempt += 1) {
-    if (!taskId) {
+  for (const item of storyboard.items) {
+    const outputPath = path.join(imageDir, `${String(item.order).padStart(2, "0")}.png`);
+    if (fs.existsSync(outputPath)) {
+      tasks.set(item.order, { task_id: "existing", status: "completed", result_url: null, output_path: outputPath });
+      attempts.push({ phase: "reuse", order: item.order, ok: true, path: toProjectPath(outputPath) });
+      continue;
+    }
+
+    for (let submitAttempt = 1; submitAttempt <= submitRetries; submitAttempt += 1) {
       try {
-        taskId = await submitVideo(submitUrl, apiKey, model);
-        attempts.push({ phase: "submit", submit_attempt: submitAttempt, ok: true, task_id_present: true });
+        const taskId = await submitImage(submitUrl, apiKey, model, promptFor(item));
+        tasks.set(item.order, { task_id: taskId, status: "pending", result_url: null, output_path: outputPath });
+        attempts.push({ phase: "submit", order: item.order, submit_attempt: submitAttempt, ok: true, task_id_present: true });
+        break;
       } catch (error) {
         attempts.push({
           phase: "submit",
+          order: item.order,
           submit_attempt: submitAttempt,
           ok: false,
           error: sanitizeText(error instanceof Error ? error.message : String(error))
         });
-        if (submitAttempt >= submitRetries) break;
-        continue;
       }
     }
+  }
 
-    for (let pollAttempt = 1; pollAttempt <= pollAttempts; pollAttempt += 1) {
-      const status = await getStatus(baseUrl, statusBasePath, taskId, apiKey);
-      lastStatus = status.task_status;
+  for (let round = 1; round <= pollRounds; round += 1) {
+    for (const [order, task] of tasks) {
+      if (task.status === "completed" || task.status === "failed" || task.status === "cancelled") continue;
+      const status = await getStatus(baseUrl, statusBasePath, task.task_id, apiKey);
+      task.status = status.task_status;
+      task.result_url = status.result_url;
       attempts.push({
         phase: "status",
-        poll_attempt: pollAttempt,
+        order,
+        poll_round: round,
         task_status: status.task_status,
         result_url_available: Boolean(status.result_url),
         error_message: status.error_message || null
       });
-
       if (status.task_status === "completed" && status.result_url) {
-        downloadedBytes = await downloadVideo(status.result_url, videoPath);
-        const manifest = {
-          ok: true,
-          provider: "apimart",
-          model,
-          task_id: taskId,
-          task_status: status.task_status,
-          loaded_env_files: loadedEnvFiles.map((file) => path.basename(file)),
-          retry_policy: {
-            max_submit_retries: submitRetries,
-            max_poll_attempts: pollAttempts,
-            poll_interval_ms: pollIntervalMs,
-            hard_cap: 30
-          },
-          video: {
-            path: toProjectPath(videoPath),
-            bytes: downloadedBytes,
-            result_url_available: true
-          },
-          attempts
-        };
-        writeJson(manifestPath, manifest);
-        console.log("real-media:smoke completed");
-        console.log("provider=apimart");
-        console.log(`model=${model}`);
-        console.log(`task_status=${status.task_status}`);
-        console.log(`video_path=${manifest.video.path}`);
-        return;
+        const bytes = await downloadImage(status.result_url, task.output_path);
+        attempts.push({ phase: "download", order, ok: true, bytes });
       }
-
-      if (status.task_status === "failed" || status.task_status === "cancelled") {
-        taskId = null;
-        break;
-      }
-
-      if (pollAttempt < pollAttempts) await sleep(pollIntervalMs);
     }
+    if ([...tasks.values()].every((task) => task.status === "completed" || task.status === "failed" || task.status === "cancelled")) break;
+    if (round < pollRounds) await sleep(pollIntervalMs);
   }
 
-  const manifest = {
-    ok: false,
+  const images = storyboard.items.map((item) => {
+    const task = tasks.get(item.order);
+    return {
+      order: item.order,
+      title: item.title,
+      ok: Boolean(task && task.status === "completed" && fs.existsSync(task.output_path)),
+      path: task && fs.existsSync(task.output_path) ? toProjectPath(task.output_path) : null,
+      task_status: task?.status ?? "failed",
+      task_id_present: Boolean(task?.task_id)
+    };
+  });
+  const ok = images.every((image) => image.ok);
+
+  writeJson(manifestPath, {
+    ok,
     provider: "apimart",
+    media_type: "image",
     model,
-    task_id: taskId,
-    task_status: lastStatus,
     loaded_env_files: loadedEnvFiles.map((file) => path.basename(file)),
     retry_policy: {
       max_submit_retries: submitRetries,
-      max_poll_attempts: pollAttempts,
+      max_poll_rounds: pollRounds,
       poll_interval_ms: pollIntervalMs,
       hard_cap: 30
     },
-    video: {
-      path: null,
-      bytes: downloadedBytes,
-      result_url_available: false
-    },
+    images,
     attempts
-  };
-  writeJson(manifestPath, manifest);
-  throw new Error(`real video generation did not complete; status=${lastStatus}`);
+  });
+
+  console.log(ok ? "real-media:smoke completed" : "real-media:smoke incomplete");
+  console.log("provider=apimart");
+  console.log("media_type=image");
+  console.log(`model=${model}`);
+  console.log(`images_completed=${images.filter((image) => image.ok).length}/${images.length}`);
+  if (!ok) throw new Error("real image generation did not complete");
 }
 
 main().catch((error) => {

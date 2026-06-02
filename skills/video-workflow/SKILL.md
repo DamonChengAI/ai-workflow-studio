@@ -11,9 +11,9 @@
 5. 生成 `outputs/video-run/media-plan.json`。
 6. 记录正常路径和失败 retry 路径。
 7. 生成多张图片和对应音频的脱敏 manifest。
-8. 运行 `npm run real-media:smoke`，尝试真实 provider 视频生成；失败时记录脱敏原因，重试总数不能超过 30。
-9. 运行 `npm run video:compose` 拼接 30 秒左右视频。若真实 provider 视频可用，必须叠进最终视频。
+8. 运行 `npm run real-media:smoke`，尝试真实 provider 图片生成；失败时记录脱敏原因，重试总数不能超过 30。不要调用视频生成接口。
+9. 运行 `npm run video:compose` 拼接 30 秒左右视频。最终视频只能由图片素材拼接得到。
 10. 使用 `video-workflow-reviewer` subagent 审查，留下 `outputs/video-run/subagent-review.md`。
-11. 运行 `REQUIRE_REAL_VIDEO=1 REQUIRE_RESEARCH=1 npm run video:check`、`npm run security:check`、`npm run video:report`、`npm run hook:check` 和 `npm run check`。
+11. 运行 `REQUIRE_REAL_IMAGES=1 REQUIRE_RESEARCH=1 npm run video:check`、`npm run security:check`、`npm run video:report`、`npm run hook:check` 和 `npm run check`。
 
 交付时用中文简要说明产物、检查结果、真实视频状态、风险和下一步。技术细节只作为支撑产品结论的证据。

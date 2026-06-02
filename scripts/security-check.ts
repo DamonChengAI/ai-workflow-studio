@@ -28,7 +28,7 @@ const findings: Array<{ file: string; pattern: string; sample: string }> = [];
 
 for (const dir of scanDirs) {
   for (const filePath of walk(dir)) {
-    if (path.extname(filePath) === ".mp4" || path.extname(filePath) === ".wav") {
+    if ([".mp4", ".wav", ".png", ".jpg", ".jpeg", ".webp"].includes(path.extname(filePath).toLowerCase())) {
       continue;
     }
     const content = fs.readFileSync(filePath, "utf8");
