@@ -155,10 +155,11 @@ function readExistingManifest(manifestPath: string) {
 }
 
 async function submitVideo(submitUrl: string, apiKey: string, model: string) {
+  const title = process.env.VIDEO_TITLE ?? "快来购买豆包高级套餐吧！";
   const body = {
     model,
     prompt:
-      "A polished product workflow explainer video: one short user request becomes structured storyboard cards, image and audio tasks, provider generation, retry handling, safety check, and final delivery report. Clean modern product UI motion, no logos, no real people, no sensitive text.",
+      `A polished 5-second Chinese product promo video opening card titled "${title}". Show a clean modern AI assistant membership upgrade scene, premium plan card, productivity icons for writing, search, image generation, and work summaries. No real people, no logos, no sensitive text, no unverifiable price claims.`,
     image_urls: [],
     duration: 5,
     aspect_ratio: "16:9",

@@ -46,6 +46,7 @@ export function sanitizeText(value: string) {
 
 export const videoRunFiles = {
   request: "outputs/video-run/request.md",
+  researchNotes: "outputs/video-run/research-notes.md",
   storyboard: "outputs/video-run/storyboard.json",
   mediaPlan: "outputs/video-run/media-plan.json",
   taskRun: "outputs/video-run/task-run.json",

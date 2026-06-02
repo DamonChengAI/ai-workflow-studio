@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { initialSample } from "../lib/mock-data";
 import { listAudioTasks, listMediaCards, listSegments, listTasks, resetStore } from "../lib/mock-store";
@@ -5,7 +6,7 @@ import { validateSample } from "../lib/validator";
 import { pollRunningTasks, retryMedia, submitMedia, submitSegmentAudio } from "../lib/workflow-service";
 import { outputDir, videoRunFiles, writeJson, writeText, type StoryboardFile } from "./video-workflow-shared";
 
-const theme = "一句需求如何变成一条可交付视频";
+const theme = process.env.VIDEO_TITLE ?? "快来购买豆包高级套餐吧！";
 const targetDurationSeconds = 30;
 const segmentIds = ["SEG_001", "SEG_002", "SEG_003", "SEG_004"];
 const mediaIds = ["MEDIA_001", "MEDIA_002", "MEDIA_003", "MEDIA_004"];
@@ -76,8 +77,6 @@ pollTwice(events, "media:MEDIA_005_retry");
 
 const segmentById = new Map(listSegments().map((segment) => [segment.segment_id, segment]));
 const mediaById = new Map(listMediaCards().map((media) => [media.media_id, media]));
-const audioBySegment = new Map(listAudioTasks().map((task) => [task.segment_id, task]));
-
 const storyboard: StoryboardFile = {
   theme,
   target_duration_seconds: targetDurationSeconds,
@@ -86,42 +85,49 @@ const storyboard: StoryboardFile = {
     {
       order: 1,
       segment_id: "INTRO",
-      title: "一句需求进入工作台",
+      title: "开场：为什么要看高级套餐",
       duration_seconds: 5,
       image_asset: "public/mock-assets/COVER_001.png",
       audio_manifest_path: "outputs/video-run/audio/01-intro.wav",
-      narration_cn: "一句需求先被改写成可执行目标，明确输入、输出和验收标准。",
-      product_point: "评测模型是否先理解目标，而不是直接做产物。"
+      narration_cn: "快来看看豆包高级套餐吧。先用最新公开信息核对权益，再判断它是不是适合你的 AI 工作流。",
+      product_point: "评测模型是否先联网核对信息，而不是直接编广告。"
     },
     ...mediaIds.map((mediaId, index) => {
       const media = mediaById.get(mediaId);
       const segment = media ? segmentById.get(media.segment_id) : null;
+      const titles = ["最新信息来源", "核心权益和价值点", "适合哪些使用场景", "失败处理和信息校验"];
+      const narrations = [
+        "第一步看来源：优先查官方页面和公开渠道，把套餐名称、权益、价格和限制条件分开记录。",
+        "第二步看价值：如果你高频写作、搜索、生成图片或处理长任务，高级套餐的意义在于更稳定的能力和更少的等待。",
+        "第三步看场景：学生做资料整理，创作者做脚本和图片，职场用户做总结和方案，都可以用豆包提高日常效率。",
+        "第四步看风险：套餐权益可能更新，购买前要回到官方页面确认价格、有效期和可用范围。"
+      ];
       return {
         order: index + 2,
         segment_id: segment?.segment_id ?? mediaId,
-        title: segment?.title ?? mediaId,
+        title: titles[index] ?? segment?.title ?? mediaId,
         duration_seconds: 5,
         image_asset: `public/mock-assets/${mediaId}.png`,
         audio_manifest_path: `outputs/video-run/audio/${String(index + 2).padStart(2, "0")}-${segment?.segment_id ?? mediaId}.wav`,
-        narration_cn: segment?.narration_cn ?? "",
+        narration_cn: narrations[index] ?? segment?.narration_cn ?? "",
         product_point:
           index === 0
-            ? "看模型是否把模糊需求变成可执行目标。"
+            ? "看模型是否留下公开来源和访问日期。"
             : index === 1
-              ? "看模型是否复用现有对象层级和上下文。"
+              ? "看模型是否把套餐信息翻译成用户价值。"
               : index === 2
-                ? "看模型是否理解异步任务、状态和轮询。"
-                : "看模型是否能处理失败、重试和复验。"
+                ? "看模型是否能从产品场景组织视频脚本。"
+                : "看模型是否处理不确定信息和复验。"
       };
     }),
     {
       order: 6,
       segment_id: "SEG_004_RECOVERY",
-      title: "失败处理和交付复盘",
+      title: "购买提醒和交付复盘",
       duration_seconds: 5,
       image_asset: "public/mock-assets/MEDIA_005.png",
       audio_manifest_path: "outputs/video-run/audio/06-recovery.wav",
-      narration_cn: "最后把失败路径、重试结果、安全检查和交付报告整理成业务方能理解的结果。",
+      narration_cn: "如果你每天都在用 AI 处理学习、创作和工作，豆包高级套餐值得认真比较。下单前记得以官方最新页面为准。",
       product_point: "看模型是否能把 trace 变成产品风险和下一步判断。"
     }
   ]
@@ -199,15 +205,30 @@ writeText(
   [
     "# Video Workflow Request",
     "",
-    `主题：${theme}`,
+    `标题：${theme}`,
     "",
     "时长：30 秒左右",
     "",
-    "目标：用一个受控视频 workflow 展示 Agent 如何把一句需求推进成可交付结果，并为双模型 Claude Code trace 对比留下证据。",
+    "目标：基于最新公开信息生成豆包高级套餐推广视频，并为双模型 Claude Code trace 对比留下证据。",
     "",
-    "验收：有分镜、多张图片、对应音频、失败处理、拼接视频、hook/subagent/安全检查和中文交付报告。"
+    "验收：有联网研究记录、分镜、多张图片、对应音频、失败处理、真实视频、拼接视频、hook/subagent/安全检查和中文交付报告。"
   ].join("\n")
 );
+const researchPath = path.join(process.cwd(), videoRunFiles.researchNotes);
+if (!fs.existsSync(researchPath)) {
+  writeText(
+    researchPath,
+    [
+      "# Research Notes",
+      "",
+      "状态：待模型联网检索后补充。",
+      "",
+      "要求：记录公开来源、访问日期、用于脚本的事实点；不要记录登录态、私有页面、provider 结果 URL 或密钥。",
+      "",
+      "sources: []"
+    ].join("\n")
+  );
+}
 writeJson(path.join(process.cwd(), videoRunFiles.storyboard), storyboard);
 writeJson(path.join(process.cwd(), videoRunFiles.mediaPlan), mediaPlan);
 writeJson(path.join(process.cwd(), videoRunFiles.taskRun), taskRun);
