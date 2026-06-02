@@ -7,6 +7,9 @@ coverage/
 .DS_Store
 data/
 outputs/
+reports/*.md
+!reports/AGENTS.md
+tsconfig.tsbuildinfo
 private-assets/
 local-assets/
 raw-assets/
