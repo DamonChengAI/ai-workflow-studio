@@ -83,7 +83,6 @@ writeJson(videoRunFiles.mediaManifest, {
     media_id: mediaId,
     forced_failure: true,
     auto_retry: false,
-    requires_model_action: false,
     retried: retry.retried,
     final_status: mediaById.get(mediaId)?.aggregate_status ?? "unknown",
     handled_by: "explicit_model_action",

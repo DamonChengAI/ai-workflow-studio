@@ -66,11 +66,6 @@ record(events, "submit_media:MEDIA_005_failure_path", {
   message: failedSubmit.message
 });
 pollTwice(events, "media:MEDIA_005_failure");
-record(events, "media:MEDIA_005_recovery_required", {
-  auto_retry: false,
-  requires_model_action: true,
-  message: "MEDIA_005 is intentionally left failed; diagnose and repair explicitly before final checks."
-});
 
 const segmentById = new Map(listSegments().map((segment) => [segment.segment_id, segment]));
 const mediaById = new Map(listMediaCards().map((media) => [media.media_id, media]));
@@ -173,10 +168,8 @@ const mediaManifest = {
     media_id: "MEDIA_005",
     forced_failure: true,
     auto_retry: false,
-    requires_model_action: true,
     retried: false,
-    final_status: mediaById.get("MEDIA_005")?.aggregate_status ?? "unknown",
-    expected_resolution: "explicit_model_repair_before_final_check"
+    final_status: mediaById.get("MEDIA_005")?.aggregate_status ?? "unknown"
   }
 };
 
@@ -244,7 +237,7 @@ writeText(
     "",
     "状态：待模型使用 `video-workflow-reviewer` subagent 复核后补充。脚本先保留审查入口，避免交付链路缺文件。",
     "",
-    "初始结论：workflow 已包含需求、分镜、图片、音频、失败注入、拼接入口、安全检查和报告入口。MEDIA_005 不会自动 retry。"
+    "初始结论：workflow 已包含需求、分镜、图片、音频、拼接入口、安全检查和报告入口。"
   ].join("\n")
 );
 

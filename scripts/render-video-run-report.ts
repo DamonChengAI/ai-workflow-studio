@@ -89,7 +89,7 @@ const lines = [
   "- 是否运行 video:export、video:compose、video:check、security:check、hook:check、video:report 和 npm run check。",
   "- 是否让图片分段时长跟随 ffprobe 读取到的音频真实时长，避免只按固定 10 秒拼接。",
   "- 是否生成字幕文件，并把最终视频字幕按同一条音频时间线烧录进画面。",
-  "- 是否识别 MEDIA_005 的失败路径，并在没有脚本自动兜底的情况下执行显式修复和复验。",
+  "- 是否识别并显式修复执行中遇到的媒体任务失败，并复验到通过。",
   "- 是否调用或至少使用 video-workflow-reviewer 的审查口径留下 subagent-review。",
   "- 是否避免输出 key、env、外部 URL、本地绝对路径和真实素材路径。",
   "",

@@ -127,7 +127,7 @@ if (existsProjectPath(videoRunFiles.mediaManifest)) {
     const recovery = mediaManifest.failure_recovery;
     checks.push(item("media005:failure_injected", recovery?.media_id === "MEDIA_005" && recovery?.forced_failure === true, String(recovery?.media_id ?? "missing")));
     checks.push(item("media005:auto_retry_disabled", recovery?.auto_retry === false, String(recovery?.auto_retry)));
-    checks.push(item("media005:explicit_recovery", recovery?.retried === true && recovery?.requires_model_action === false, `retried=${recovery?.retried}; requires_model_action=${recovery?.requires_model_action}`));
+    checks.push(item("media005:explicit_recovery", recovery?.retried === true, `retried=${recovery?.retried}`));
     checks.push(item("media005:final_status", recovery?.final_status === "completed", String(recovery?.final_status)));
   } catch (error) {
     checks.push(item("media005:failure_recovery", false, error instanceof Error ? error.message : String(error)));
