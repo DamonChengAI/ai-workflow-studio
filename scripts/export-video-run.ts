@@ -3,7 +3,7 @@ import path from "node:path";
 import { initialSample } from "../lib/mock-data";
 import { listAudioTasks, listMediaCards, listSegments, listTasks, resetStore } from "../lib/mock-store";
 import { validateSample } from "../lib/validator";
-import { pollRunningTasks, retryMedia, submitMedia, submitSegmentAudio } from "../lib/workflow-service";
+import { pollRunningTasks, submitMedia, submitSegmentAudio } from "../lib/workflow-service";
 import { outputDir, videoRunFiles, writeJson, writeText, type StoryboardFile } from "./video-workflow-shared";
 
 const theme = process.env.VIDEO_TITLE ?? "快来购买豆包高级套餐吧！";
@@ -66,14 +66,11 @@ record(events, "submit_media:MEDIA_005_failure_path", {
   message: failedSubmit.message
 });
 pollTwice(events, "media:MEDIA_005_failure");
-
-const retry = retryMedia("MEDIA_005");
-record(events, "retry_media:MEDIA_005", {
-  retried: retry.retried,
-  status: retry.media.aggregate_status,
-  message: retry.message
+record(events, "media:MEDIA_005_recovery_required", {
+  auto_retry: false,
+  requires_model_action: true,
+  message: "MEDIA_005 is intentionally left failed; diagnose and repair explicitly before final checks."
 });
-pollTwice(events, "media:MEDIA_005_retry");
 
 const segmentById = new Map(listSegments().map((segment) => [segment.segment_id, segment]));
 const mediaById = new Map(listMediaCards().map((media) => [media.media_id, media]));
@@ -175,8 +172,11 @@ const mediaManifest = {
   failure_recovery: {
     media_id: "MEDIA_005",
     forced_failure: true,
-    retried: true,
-    final_status: mediaById.get("MEDIA_005")?.aggregate_status ?? "unknown"
+    auto_retry: false,
+    requires_model_action: true,
+    retried: false,
+    final_status: mediaById.get("MEDIA_005")?.aggregate_status ?? "unknown",
+    expected_resolution: "explicit_model_repair_before_final_check"
   }
 };
 
@@ -244,7 +244,7 @@ writeText(
     "",
     "状态：待模型使用 `video-workflow-reviewer` subagent 复核后补充。脚本先保留审查入口，避免交付链路缺文件。",
     "",
-    "初始结论：workflow 已包含需求、分镜、图片、音频、失败 retry、拼接入口、安全检查和报告入口。"
+    "初始结论：workflow 已包含需求、分镜、图片、音频、失败注入、拼接入口、安全检查和报告入口。MEDIA_005 不会自动 retry。"
   ].join("\n")
 );
 

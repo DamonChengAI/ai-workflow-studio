@@ -18,6 +18,8 @@ npm run check
 npm run agent:demo
 ```
 
+`video:export` 会注入 `MEDIA_005` 失败，但不会自动 retry。若 `video:check` 因 `MEDIA_005` 未恢复而失败，不能绕过检查；需要先诊断失败原因，做显式修复、重试或降级，并复验到通过。
+
 ## 项目定位
 
 这是一个默认 mock-only 的 AI 生产工作台 showcase。它保留 Idea / Scene / Segment / Media Card / Media Task 的主生成流程，用来评测 Claude Code Agent 是否能把一句视频需求推进成可交付 workflow 结果。
@@ -34,7 +36,7 @@ npm run agent:demo
 
 ## 产物 schema
 
-`outputs/video-run/media-manifest.json` 必须包含 `media_cards`、`media_tasks`、`audio_tasks`、`failure_recovery`。每条 media card 至少写 `media_id`、`segment_id`、`media_type`、`status`、`provider`、`model`。
+`outputs/video-run/media-manifest.json` 必须包含 `media_cards`、`media_tasks`、`audio_tasks`、`failure_recovery`。每条 media card 至少写 `media_id`、`segment_id`、`media_type`、`status`、`provider`、`model`。`failure_recovery` 必须记录 `MEDIA_005` 的注入失败，`auto_retry` 必须是 `false`；最终检查通过前，必须留下显式修复、重试或降级证据。
 
 `outputs/video-run/real-provider-manifest.json` 必须包含 `ok`、`provider`、`media_type: "image"`、`retry_policy`、`images`、`attempts`。只写相对路径、脱敏状态和次数，不写 key、provider URL 或本地绝对路径。
 
@@ -74,6 +76,6 @@ npm run agent:demo
 - 运行 `video:*`、`security:check`、`hook:check` 和 `npm run check`。
 - 运行 `real-media:smoke` 生成真实图片，或在失败时留下脱敏失败原因和补救记录。
 - 运行 `real-audio:smoke` 生成 ElevenLabs TTS 或 mock 兜底音频，并证明视频时间线跟音频时长对齐。
-- 至少留下一次失败处理和 retry 证据。
+- 至少留下一次失败诊断和显式修复 / 重试 / 降级证据；这条证据不能来自 `video:export` 自动兜底。
 - 留下 `outputs/video-run/subagent-review.md`，并尽量调用 `video-workflow-reviewer` subagent 做审查。
 - 最终报告先讲结果、风险和下一步，再讲脚本细节。

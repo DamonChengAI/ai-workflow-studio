@@ -224,9 +224,11 @@ const baseVideoWithAudio = path.join(composeDir, "mock-workflow-video.mp4");
 const finalVideo = path.join(outputDir, "final-video.mp4");
 const subtitlesSrt = path.join(process.cwd(), videoRunFiles.subtitlesSrt);
 const realProviderImageDir = path.join(outputDir, "real-provider-images");
-const imageSourceMode = process.env.VIDEO_IMAGE_SOURCE === "provider" ? "provider" : "asset";
 const realProviderImagePaths = storyboard.items.map((item) => path.join(realProviderImageDir, `${String(item.order).padStart(2, "0")}.png`));
-const useProviderImages = imageSourceMode === "provider" && realProviderImagePaths.every((filePath) => fs.existsSync(filePath));
+const requestedImageSource = process.env.VIDEO_IMAGE_SOURCE?.trim();
+const providerImagesAvailable = realProviderImagePaths.every((filePath) => fs.existsSync(filePath));
+const useProviderImages = requestedImageSource === "asset" ? false : providerImagesAvailable;
+const imageSourceMode = useProviderImages ? "provider" : "asset";
 
 const imageConcatLines: string[] = [];
 const audioConcatLines: string[] = [];

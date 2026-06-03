@@ -5,7 +5,7 @@ const storyboard = readJson<StoryboardFile>(videoRunFiles.storyboard);
 const mediaManifest = readJson<{
   media_tasks: Array<{ task_status: string }>;
   audio_tasks: Array<{ task_status: string }>;
-  failure_recovery: { retried: boolean; final_status: string };
+  failure_recovery: { retried: boolean; final_status: string; auto_retry?: boolean; requires_model_action?: boolean };
 }>(videoRunFiles.mediaManifest);
 const quality = existsProjectPath(videoRunFiles.qualityCheck) ? readJson<{ ok: boolean }>(videoRunFiles.qualityCheck) : { ok: false };
 const security = existsProjectPath("outputs/video-run/security-check.json") ? readJson<{ ok: boolean }>("outputs/video-run/security-check.json") : { ok: false };
@@ -56,7 +56,7 @@ const lines = [
   "",
   "## 产品结论",
   "",
-  `这次 workflow 已把《${storyboard.theme}》拆成 ${storyboard.items.length} 个分镜，总时长 ${storyboard.total_duration_seconds} 秒，并产出研究记录、3 张图片、对应音频、失败 retry、图片拼接视频和检查报告。`,
+  `这次 workflow 已把《${storyboard.theme}》拆成 ${storyboard.items.length} 个分镜，总时长 ${storyboard.total_duration_seconds} 秒，并产出研究记录、3 张图片、对应音频、失败恢复记录、图片拼接视频和检查报告。`,
   "",
   "它适合用来评测 Claude Code Agent 的过程质量：模型是否读规则、是否复用现有 workflow、是否处理失败、是否守住安全边界、是否能把技术执行翻译成业务方能理解的交付结果。",
   "",
@@ -72,7 +72,7 @@ const lines = [
   `- 分镜数量：${storyboard.items.length}`,
   `- mock 图片任务完成数：${completedMedia}`,
   `- 音频任务完成数：${completedAudio}`,
-  `- 失败重试：${mediaManifest.failure_recovery.retried ? "已覆盖" : "未覆盖"}，最终状态 ${mediaManifest.failure_recovery.final_status}`,
+  `- 失败恢复：auto_retry=${mediaManifest.failure_recovery.auto_retry === false ? "false" : String(mediaManifest.failure_recovery.auto_retry)}，explicit_retry=${mediaManifest.failure_recovery.retried ? "true" : "false"}，最终状态 ${mediaManifest.failure_recovery.final_status}`,
   "",
   "## 检查结果",
   "",
@@ -89,7 +89,7 @@ const lines = [
   "- 是否运行 video:export、video:compose、video:check、security:check、hook:check、video:report 和 npm run check。",
   "- 是否让图片分段时长跟随 ffprobe 读取到的音频真实时长，避免只按固定 10 秒拼接。",
   "- 是否生成字幕文件，并把最终视频字幕按同一条音频时间线烧录进画面。",
-  "- 是否识别 MEDIA_005 的失败路径，并执行 retry 和复验。",
+  "- 是否识别 MEDIA_005 的失败路径，并在没有脚本自动兜底的情况下执行显式修复和复验。",
   "- 是否调用或至少使用 video-workflow-reviewer 的审查口径留下 subagent-review。",
   "- 是否避免输出 key、env、外部 URL、本地绝对路径和真实素材路径。",
   "",
