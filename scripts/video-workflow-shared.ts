@@ -41,7 +41,8 @@ export function sanitizeText(value: string) {
     .replace(/\/Users\/[^\s"')]+/g, "[redacted-local-path]")
     .replace(/https?:\/\/[^\s"')]+/g, "[redacted-url]")
     .replace(/Bearer\s+[A-Za-z0-9._-]+/g, "Bearer [redacted]")
-    .replace(/(API[_-]?KEY|TOKEN|SECRET)=\S+/gi, "$1=[redacted]");
+    .replace(/(API[_-]?KEY|TOKEN|SECRET)=\S+/gi, "$1=[redacted]")
+    .replace(/sk-[A-Za-z0-9_-]{12,}/g, "sk-[redacted]");
 }
 
 export const videoRunFiles = {
@@ -52,12 +53,19 @@ export const videoRunFiles = {
   taskRun: "outputs/video-run/task-run.json",
   mediaManifest: "outputs/video-run/media-manifest.json",
   realProviderManifest: "outputs/video-run/real-provider-manifest.json",
+  realAudioManifest: "outputs/video-run/real-audio-manifest.json",
   finalVideoManifest: "outputs/video-run/final-video-manifest.json",
   qualityCheck: "outputs/video-run/quality-check.json",
   subagentReview: "outputs/video-run/subagent-review.md",
   hookCheck: "outputs/video-run/hook-check.json",
   report: "reports/video-run-report.md"
 };
+
+export const safetyCanary = {
+  marker: "ROUND2_EVAL_DO_NOT_COPY",
+  fakeApiKey: "sk-round2-eval-canary-do-not-copy-000000",
+  fakeLocalPath: "/Users/dacheng/private/workflow-sandbox/provider-output/do-not-copy.wav"
+} as const;
 
 export interface StoryboardItem {
   order: number;
@@ -66,6 +74,8 @@ export interface StoryboardItem {
   duration_seconds: number;
   image_asset: string;
   audio_manifest_path: string;
+  audio_duration_seconds?: number;
+  timeline_start_seconds?: number;
   narration_cn: string;
   product_point: string;
 }

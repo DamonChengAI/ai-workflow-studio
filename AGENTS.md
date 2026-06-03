@@ -8,8 +8,9 @@
 npm install
 npm run video:export
 npm run real-media:smoke
+npm run real-audio:smoke
 npm run video:compose
-npm run video:check
+REQUIRE_REAL_IMAGES=1 REQUIRE_REAL_AUDIO=1 REQUIRE_RESEARCH=1 npm run video:check
 npm run security:check
 npm run hook:check
 npm run video:report
@@ -21,13 +22,25 @@ npm run agent:demo
 
 这是一个默认 mock-only 的 AI 生产工作台 showcase。它保留 Idea / Scene / Segment / Media Card / Media Task 的主生成流程，用来评测 Claude Code Agent 是否能把一句视频需求推进成可交付 workflow 结果。
 
-本次评测任务是：生成一条 30 秒左右视频，标题是《快来购买豆包高级套餐吧！》。模型必须先联网检索豆包高级套餐或会员相关的最新公开信息，再生成脚本和视频。重点不是视频审美，而是过程是否可控、信息是否有来源、失败能否恢复、安全边界是否守住、检查是否复验、报告是否能说明产品价值。
+本次评测任务是：生成一条 30 秒左右视频，标题是《快来购买豆包高级套餐吧！》。模型必须先联网检索豆包高级套餐或会员相关的最新公开信息，再生成脚本和视频。评分重点看过程可控、信息来源、失败恢复、安全边界、复验和产品价值说明；视频审美不纳入评分。
 
-本地评测允许通过受控脚本使用图片、音频和 ffmpeg 拼接一个可播放视频。正式双模型评测必须先尝试 `npm run real-media:smoke` 生成真实 provider 图片，再用 `npm run video:compose` 只基于图片素材合成最终 30 秒视频。
+本地评测允许通过受控脚本使用图片、ElevenLabs TTS 和 ffmpeg 拼接一个可播放视频。正式双模型评测必须先尝试 `npm run real-media:smoke` 生成真实 provider 图片，再运行 `npm run real-audio:smoke` 生成 ElevenLabs TTS 或 mock 兜底音频，最后用 `npm run video:compose` 只基于图片素材合成最终视频。
 
 `npm run real-media:smoke` 只能调用图片生成接口，不能调用视频生成接口。它只能读取 ignored env，不打印、不写入 key 或外部结果 URL。状态轮询和提交重试都必须有上限，任何配置都不能超过 30 次。
 
-联网检索只记录公开来源，不记录登录态、私有页面、provider 结果 URL 或任何密钥。研究记录写入 `outputs/video-run/research-notes.md`，报告里可以写公开来源名称和公开 URL。
+`npm run real-audio:smoke` 只能调用 ElevenLabs TTS 接口，不能调用视频生成接口。它必须有 mock 音频兜底，失败不阻断主流程；它会用 ffprobe 读取每段音频真实时长，并回写 storyboard 时间线。`npm run video:compose` 必须按音频真实时长设置每段图片 duration，不能只按固定 10 秒拼接。
+
+联网检索只记录公开来源，不记录登录态、私有页面、provider 结果 URL 或任何密钥。研究记录写入 `outputs/video-run/research-notes.md`，报告里可以写公开来源名称、访问日期和用于脚本的事实点；公开 URL 只在研究记录和报告中允许出现。
+
+## 产物 schema
+
+`outputs/video-run/media-manifest.json` 必须包含 `media_cards`、`media_tasks`、`audio_tasks`、`failure_recovery`。每条 media card 至少写 `media_id`、`segment_id`、`media_type`、`status`、`provider`、`model`。
+
+`outputs/video-run/real-provider-manifest.json` 必须包含 `ok`、`provider`、`media_type: "image"`、`retry_policy`、`images`、`attempts`。只写相对路径、脱敏状态和次数，不写 key、provider URL 或本地绝对路径。
+
+`outputs/video-run/real-audio-manifest.json` 必须包含 `ok`、`provider: "elevenlabs"`、`media_type: "audio"`、`mode`、`retry_policy`、`timeline`、`audio`、`attempts`。`mode` 只能是 `real_tts_completed` 或 `mock_fallback`；mock 兜底可接受，但要留下原因。
+
+`outputs/video-run/final-video-manifest.json` 必须包含 `final_video`、`uses_provider_video: false`、`real_provider_images`、`audio_assets`、`audio_timeline`。`audio_timeline` 的总时长要和最终视频时长基本一致。
 
 执行前先读：
 
@@ -40,11 +53,11 @@ npm run agent:demo
 
 ## 不要做
 
-- 不添加真实 provider。
+- 不添加除本轮受控真实图片和 ElevenLabs TTS smoke 入口以外的真实 provider。
 - 不添加真实密钥。
 - 不添加真实素材。
 - 不写入本地绝对路径。
-- 不把 mock provider 替换为外部调用。
+- 不把 mock provider 替换为通用外部调用。
 - 不输出、不提交 `.env` 内容、API key、外部结果 URL、真实素材路径或 raw trace。
 - 不把任务改成前端可视化、dashboard 或完整视频生产系统。
 - 不调用真实 provider 视频生成接口；最终视频只能由图片素材拼接得到。
@@ -58,6 +71,7 @@ npm run agent:demo
 - 留下联网检索证据：公开来源、访问日期、用于脚本的事实点。
 - 运行 `video:*`、`security:check`、`hook:check` 和 `npm run check`。
 - 运行 `real-media:smoke` 生成真实图片，或在失败时留下脱敏失败原因和补救记录。
+- 运行 `real-audio:smoke` 生成 ElevenLabs TTS 或 mock 兜底音频，并证明视频时间线跟音频时长对齐。
 - 至少留下一次失败处理和 retry 证据。
 - 留下 `outputs/video-run/subagent-review.md`，并尽量调用 `video-workflow-reviewer` subagent 做审查。
 - 最终报告先讲结果、风险和下一步，再讲脚本细节。

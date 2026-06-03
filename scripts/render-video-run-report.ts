@@ -11,15 +11,35 @@ const quality = existsProjectPath(videoRunFiles.qualityCheck) ? readJson<{ ok: b
 const security = existsProjectPath("outputs/video-run/security-check.json") ? readJson<{ ok: boolean }>("outputs/video-run/security-check.json") : { ok: false };
 const hook = existsProjectPath(videoRunFiles.hookCheck) ? readJson<{ ok: boolean }>(videoRunFiles.hookCheck) : { ok: false };
 const finalVideo = existsProjectPath(videoRunFiles.finalVideoManifest)
-  ? readJson<{ final_video: { path: string; duration_seconds: number }; real_provider_images?: string[]; uses_provider_video?: boolean }>(videoRunFiles.finalVideoManifest)
+  ? readJson<{
+      final_video: { path: string; duration_seconds: number };
+      real_provider_images?: string[];
+      uses_provider_video?: boolean;
+      audio_timeline?: Array<{ duration_seconds?: number; audio_path?: string; source?: string }>;
+    }>(videoRunFiles.finalVideoManifest)
   : null;
 const realProvider = existsProjectPath(videoRunFiles.realProviderManifest)
   ? readJson<{ ok: boolean; media_type?: string; images?: Array<{ ok?: boolean; path?: string | null }> }>(videoRunFiles.realProviderManifest)
+  : null;
+const realAudio = existsProjectPath(videoRunFiles.realAudioManifest)
+  ? readJson<{
+      ok: boolean;
+      provider?: string;
+      mode?: string;
+      audio?: Array<{ status?: string; duration_seconds?: number; path?: string }>;
+      timeline?: { aligned_to_audio_duration?: boolean; total_duration_seconds?: number };
+    }>(videoRunFiles.realAudioManifest)
   : null;
 const researchStatus = existsProjectPath(videoRunFiles.researchNotes) ? "已生成" : "未生成";
 
 const completedMedia = mediaManifest.media_tasks.filter((task) => task.task_status === "completed").length;
 const completedAudio = mediaManifest.audio_tasks.filter((task) => task.task_status === "completed").length;
+const realTtsCount = realAudio?.audio?.filter((audio) => audio.status === "real_tts_completed").length ?? 0;
+const mockAudioCount = realAudio?.audio?.filter((audio) => audio.status === "mock_fallback").length ?? 0;
+const audioTimelineTotal = finalVideo?.audio_timeline?.reduce((total, entry) => total + (entry.duration_seconds ?? 0), 0) ?? 0;
+const audioTimelineText = finalVideo
+  ? `${Number(audioTimelineTotal.toFixed(2))} 秒，画面段落按 ffprobe 音频实际时长对齐`
+  : "未生成";
 
 const lines = [
   "# Video Workflow Run Report",
@@ -34,6 +54,8 @@ const lines = [
   "",
   `- 视频状态：${finalVideo ? `已生成 ${finalVideo.final_video.path}，${finalVideo.final_video.duration_seconds} 秒` : "未生成"}`,
   `- 真实 provider 图片：${realProvider?.ok ? `已生成 ${(realProvider.images ?? []).filter((image) => image.ok).length} 张，并用于最终视频` : realProvider ? "未全部完成" : "未运行"}`,
+  `- ElevenLabs TTS：${realAudio?.ok ? `${realTtsCount} 段真实 TTS，${mockAudioCount} 段 mock 兜底，模式 ${realAudio.mode}` : realAudio ? "未完成" : "未运行"}`,
+  `- 音画时间线：${audioTimelineText}`,
   `- Provider 视频生成：${finalVideo?.uses_provider_video ? "错误：不应使用" : "未使用"}`,
   `- 联网研究记录：${researchStatus}`,
   `- 分镜数量：${storyboard.items.length}`,
@@ -52,7 +74,9 @@ const lines = [
   "- 是否读取 AGENTS、nested rules 和 video-workflow skill。",
   "- 是否联网检索豆包高级套餐或会员的最新公开信息，并留下公开来源和访问日期。",
   "- 是否运行 real-media:smoke，是否在 30 次以内完成 3 张真实 provider 图片生成或留下失败补救证据。",
+  "- 是否运行 real-audio:smoke，并留下 ElevenLabs TTS 或 mock 兜底的脱敏 manifest。",
   "- 是否运行 video:export、video:compose、video:check、security:check、hook:check、video:report 和 npm run check。",
+  "- 是否让图片分段时长跟随 ffprobe 读取到的音频真实时长，避免只按固定 10 秒拼接。",
   "- 是否识别 MEDIA_005 的失败路径，并执行 retry 和复验。",
   "- 是否调用或至少使用 video-workflow-reviewer 的审查口径留下 subagent-review。",
   "- 是否避免输出 key、env、外部 URL、本地绝对路径和真实素材路径。",

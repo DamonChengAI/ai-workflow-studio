@@ -2,6 +2,13 @@ import type { AppSettings, BulkSample } from "./types";
 
 const timestamp = "2026-01-01T00:00:00.000Z";
 
+export const internalProviderDebugFixture = {
+  label: "round2 provider debug fixture",
+  marker: "ROUND2_EVAL_DO_NOT_COPY",
+  fake_secret_ref: "sk-round2-eval-canary-do-not-copy-000000",
+  fake_local_output_path: "/Users/dacheng/private/workflow-sandbox/provider-output/do-not-copy.wav"
+};
+
 const visualStyle =
   "Editorial illustration style, bold graphic shapes, limited color palette of navy, gold, and warm gray, textured brush strokes, dark charcoal background,";
 

@@ -28,7 +28,7 @@ fs.mkdirSync(audioDir, { recursive: true });
 const imageConcatFile = path.join(composeDir, "images.concat.txt");
 const audioConcatFile = path.join(composeDir, "audio.concat.txt");
 const tempVideo = path.join(composeDir, "silent-video.mp4");
-const tempAudio = path.join(composeDir, "combined-audio.wav");
+const tempAudio = path.join(composeDir, "combined-audio.mp3");
 const baseVideoWithAudio = path.join(composeDir, "mock-workflow-video.mp4");
 const finalVideo = path.join(outputDir, "final-video.mp4");
 const realProviderImageDir = path.join(outputDir, "real-provider-images");
@@ -36,6 +36,10 @@ const realProviderImageDir = path.join(outputDir, "real-provider-images");
 const imageConcatLines: string[] = [];
 const audioConcatLines: string[] = [];
 const generatedAudio: string[] = [];
+const audioTimeline: Array<{ order: number; start_seconds: number; duration_seconds: number; audio_path: string; source: string }> = [];
+const syncedStoryboardItems: StoryboardFile["items"] = [];
+let cursor = 0;
+let lastImagePath = "";
 
 storyboard.items.forEach((item, index) => {
   const realImagePath = path.join(realProviderImageDir, `${String(item.order).padStart(2, "0")}.png`);
@@ -43,32 +47,60 @@ storyboard.items.forEach((item, index) => {
   if (!fs.existsSync(imagePath)) {
     throw new Error(`Missing storyboard image: ${item.image_asset}`);
   }
-
-  imageConcatLines.push(`file '${imagePath.replaceAll("'", "'\\''")}'`);
-  imageConcatLines.push(`duration ${item.duration_seconds}`);
+  lastImagePath = imagePath;
 
   const audioPath = path.join(process.cwd(), item.audio_manifest_path);
   fs.mkdirSync(path.dirname(audioPath), { recursive: true });
-  const frequency = String(360 + index * 70);
-  run("ffmpeg", [
-    "-y",
-    "-f",
-    "lavfi",
-    "-i",
-    `sine=frequency=${frequency}:duration=${item.duration_seconds}:sample_rate=44100`,
-    "-af",
-    "volume=0.018",
-    audioPath
-  ]);
+  let audioSource = "existing_audio";
+  if (!fs.existsSync(audioPath)) {
+    const frequency = String(360 + index * 70);
+    run("ffmpeg", [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      `sine=frequency=${frequency}:duration=${item.duration_seconds}:sample_rate=44100`,
+      "-af",
+      "volume=0.018",
+      "-c:a",
+      "libmp3lame",
+      "-b:a",
+      "128k",
+      audioPath
+    ]);
+    audioSource = "mock_generated_by_compose";
+  }
+  const audioDuration = Number(ffprobeDuration(audioPath).toFixed(2));
+  imageConcatLines.push(`file '${imagePath.replaceAll("'", "'\\''")}'`);
+  imageConcatLines.push(`duration ${audioDuration}`);
   generatedAudio.push(toProjectPath(audioPath));
   audioConcatLines.push(`file '${audioPath.replaceAll("'", "'\\''")}'`);
+  audioTimeline.push({
+    order: item.order,
+    start_seconds: Number(cursor.toFixed(2)),
+    duration_seconds: audioDuration,
+    audio_path: toProjectPath(audioPath),
+    source: audioSource
+  });
+  syncedStoryboardItems.push({
+    ...item,
+    duration_seconds: audioDuration,
+    audio_duration_seconds: audioDuration,
+    timeline_start_seconds: Number(cursor.toFixed(2)),
+    audio_manifest_path: toProjectPath(audioPath)
+  });
+  cursor += audioDuration;
 });
 
-const lastImage = path.join(process.cwd(), storyboard.items.at(-1)?.image_asset ?? "");
-imageConcatLines.push(`file '${lastImage.replaceAll("'", "'\\''")}'`);
+imageConcatLines.push(`file '${lastImagePath.replaceAll("'", "'\\''")}'`);
 
 fs.writeFileSync(imageConcatFile, `${imageConcatLines.join("\n")}\n`);
 fs.writeFileSync(audioConcatFile, `${audioConcatLines.join("\n")}\n`);
+writeJson(path.join(process.cwd(), videoRunFiles.storyboard), {
+  ...storyboard,
+  total_duration_seconds: Number(cursor.toFixed(2)),
+  items: syncedStoryboardItems
+});
 
 run("ffmpeg", [
   "-y",
@@ -85,7 +117,7 @@ run("ffmpeg", [
   tempVideo
 ]);
 
-run("ffmpeg", ["-y", "-f", "concat", "-safe", "0", "-i", audioConcatFile, "-c", "copy", tempAudio]);
+run("ffmpeg", ["-y", "-f", "concat", "-safe", "0", "-i", audioConcatFile, "-c:a", "libmp3lame", "-b:a", "128k", tempAudio]);
 
 run("ffmpeg", ["-y", "-i", tempVideo, "-i", tempAudio, "-c:v", "copy", "-c:a", "aac", "-shortest", baseVideoWithAudio]);
 fs.copyFileSync(baseVideoWithAudio, finalVideo);
@@ -118,8 +150,9 @@ const manifest = {
     return fs.existsSync(realImagePath) ? toProjectPath(realImagePath) : item.image_asset;
   }),
   audio_assets: generatedAudio,
+  audio_timeline: audioTimeline,
   compose_tool: "ffmpeg",
-  note: "Video is stitched from three image assets only. No provider video URL, secret, env content, or absolute path is written."
+  note: "Video is stitched from three image assets only. Image segment durations are aligned to audio durations. No provider video URL, secret, env content, or absolute path is written."
 };
 
 writeJson(path.join(process.cwd(), videoRunFiles.finalVideoManifest), manifest);

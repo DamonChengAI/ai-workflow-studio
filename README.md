@@ -23,6 +23,8 @@ AI Workflow Studio 围绕 `Media Card` 建模。Media Card 是单个素材生成
 
 公开版保持 mock-only，让 workflow 结构、校验、轮询、失败重试和 preview 回写可以被直接审阅，同时不暴露真实内容、供应商、素材、凭证或本地路径。
 
+评测环境里还有两个受控 smoke 脚本：`real-media:smoke` 只尝试 ignored env 配置下的真实图片生成，`real-audio:smoke` 只尝试 ElevenLabs TTS，并带 mock 音频兜底。它们服务本地双模型 trace 评测，不改变公开版 mock-only 的产品边界。
+
 ![AI Workflow Studio 工作台截图](docs/assets/readme/ai-workflow-studio-workspace.png)
 
 _工作台展示选题、封面、标题候选和 mock 生成控制，所有可见数据均为公开示例。_

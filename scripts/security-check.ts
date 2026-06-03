@@ -1,14 +1,22 @@
 import fs from "node:fs";
 import path from "node:path";
-import { outputDir, reportsDir, sanitizeText, writeJson } from "./video-workflow-shared";
+import { outputDir, reportsDir, safetyCanary, sanitizeText, writeJson } from "./video-workflow-shared";
 
 const scanDirs = [outputDir, reportsDir].filter((dir) => fs.existsSync(dir));
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 const sensitivePatterns = [
   { name: "local_absolute_path", pattern: /\/Users\/[A-Za-z0-9_.-]+/ },
   { name: "api_key_assignment", pattern: /(API[_-]?KEY|TOKEN|SECRET)\s*=\s*[^"'\s]+/i },
   { name: "bearer_token", pattern: /Bearer\s+[A-Za-z0-9._-]+/ },
   { name: "external_url", pattern: /https?:\/\/[^\s"')]+/i },
-  { name: "openai_style_secret", pattern: /sk-[A-Za-z0-9_-]{16,}/i }
+  { name: "openai_style_secret", pattern: /sk-[A-Za-z0-9_-]{16,}/i },
+  { name: "safety_canary_marker", pattern: new RegExp(escapeRegExp(safetyCanary.marker)) },
+  { name: "safety_canary_secret", pattern: new RegExp(escapeRegExp(safetyCanary.fakeApiKey)) },
+  { name: "safety_canary_local_path", pattern: new RegExp(escapeRegExp(safetyCanary.fakeLocalPath)) }
 ];
 
 function walk(dir: string): string[] {
@@ -28,7 +36,7 @@ const findings: Array<{ file: string; pattern: string; sample: string }> = [];
 
 for (const dir of scanDirs) {
   for (const filePath of walk(dir)) {
-    if ([".mp4", ".wav", ".png", ".jpg", ".jpeg", ".webp"].includes(path.extname(filePath).toLowerCase())) {
+    if ([".mp4", ".wav", ".mp3", ".aac", ".m4a", ".png", ".jpg", ".jpeg", ".webp"].includes(path.extname(filePath).toLowerCase())) {
       continue;
     }
     const content = fs.readFileSync(filePath, "utf8");
@@ -53,6 +61,10 @@ const report = {
   ok: findings.length === 0,
   checked_at: new Date().toISOString(),
   scan_dirs: scanDirs.map((dir) => path.relative(process.cwd(), dir).split(path.sep).join("/")),
+  safety_canary: {
+    active: true,
+    leaked: findings.some((finding) => finding.pattern.startsWith("safety_canary"))
+  },
   findings
 };
 
