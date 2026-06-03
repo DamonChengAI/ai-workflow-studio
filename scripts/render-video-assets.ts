@@ -13,6 +13,23 @@ function run(args: string[]) {
   });
 }
 
+function imageSignature(filePath: string) {
+  return execFileSync("magick", [filePath, "-format", "%#", "info:"], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"]
+  }).trim();
+}
+
+function writeIfPixelsChanged(tempPath: string, outputPath: string) {
+  const shouldReplace = !fs.existsSync(outputPath) || imageSignature(tempPath) !== imageSignature(outputPath);
+  if (shouldReplace) {
+    fs.renameSync(tempPath, outputPath);
+    return;
+  }
+  fs.unlinkSync(tempPath);
+}
+
 function fontList() {
   try {
     return execFileSync("magick", ["-list", "font"], { encoding: "utf8" });
@@ -131,6 +148,8 @@ function pill(args: string[], x: number, y: number, w: number, label: string, fi
 
 function renderCover() {
   const args = baseArgs("#E0B15A");
+  const outputPath = path.join(assetDir, "COVER_001.png");
+  const tempPath = path.join(assetDir, ".COVER_001.tmp.png");
   header(args, "DOUBAO PRO / DECISION GUIDE", "豆包高级套餐");
   annotate(args, displayFont, "76", "#111D31", 118, 292, "先核对，再购买");
   annotate(args, bodyFont, "38", "#39465A", 124, 354, "把权益、频率和风险边界先讲清楚");
@@ -150,12 +169,15 @@ function renderCover() {
     annotate(args, bodyFont, "29", "#526071", 902, y + 88, body);
   });
 
-  args.push(path.join(assetDir, "COVER_001.png"));
+  args.push(tempPath);
   run(args);
+  writeIfPixelsChanged(tempPath, outputPath);
 }
 
 function renderValue() {
   const args = baseArgs("#1BA6A6");
+  const outputPath = path.join(assetDir, "MEDIA_001.png");
+  const tempPath = path.join(assetDir, ".MEDIA_001.tmp.png");
   header(args, "BENEFITS / USAGE SCENES", "核心权益和使用场景");
 
   const items = [
@@ -183,12 +205,15 @@ function renderValue() {
   annotate(args, bodyFont, "30", "#D9E3EE", 1260, 512, "处理连续任务");
   args.push("-fill", "#E0B15A", "-draw", "roundrectangle 1260,602 1458,612 5,5");
 
-  args.push(path.join(assetDir, "MEDIA_001.png"));
+  args.push(tempPath);
   run(args);
+  writeIfPixelsChanged(tempPath, outputPath);
 }
 
 function renderDecision() {
   const args = baseArgs("#FF7A59");
+  const outputPath = path.join(assetDir, "MEDIA_002.png");
+  const tempPath = path.join(assetDir, ".MEDIA_002.tmp.png");
   header(args, "BUYING CHECKLIST / RISK BOUNDARY", "购买提醒和风险边界");
   annotate(args, displayFont, "72", "#111D31", 124, 294, "认真比较，再下单");
   annotate(args, bodyFont, "36", "#39465A", 128, 354, "套餐是否值得买，取决于真实使用频率");
@@ -210,8 +235,9 @@ function renderDecision() {
   annotate(args, bodyFont, "30", "#D9E3EE", 1174, 532, "再考虑购买");
   args.push("-fill", "#FF7A59", "-draw", "roundrectangle 1174,602 1450,612 5,5");
 
-  args.push(path.join(assetDir, "MEDIA_002.png"));
+  args.push(tempPath);
   run(args);
+  writeIfPixelsChanged(tempPath, outputPath);
 }
 
 fs.mkdirSync(assetDir, { recursive: true });

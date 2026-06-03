@@ -146,14 +146,13 @@ function renderSubtitleImages(cues: SubtitleCue[], fontPath: string | undefined)
   fs.rmSync(imageDir, { recursive: true, force: true });
   fs.mkdirSync(imageDir, { recursive: true });
   const panelWidth = 1240;
-  const panelHeight = 128;
+  const panelHeight = 132;
   const textWidth = 1176;
-  const textHeight = 100;
+  const textHeight = 108;
 
   return cues.map((cue) => {
     const imagePath = path.join(imageDir, `${String(cue.index).padStart(3, "0")}.png`);
     const textLayerPath = path.join(imageDir, `${String(cue.index).padStart(3, "0")}.text.png`);
-    const shadowLayerPath = path.join(imageDir, `${String(cue.index).padStart(3, "0")}.shadow.png`);
     const args = [
       "-size",
       `${panelWidth}x${panelHeight}`,
@@ -184,22 +183,6 @@ function renderSubtitleImages(cues: SubtitleCue[], fontPath: string | undefined)
     ];
     run("magick", args);
 
-    const shadowArgs = [
-      "-size",
-      `${textWidth}x${textHeight}`,
-      "-background",
-      "none",
-      "-fill",
-      "rgba(0,0,0,0.95)",
-      "-gravity",
-      "center",
-      "-pointsize",
-      "40"
-    ];
-    if (fontPath) shadowArgs.push("-font", fontPath);
-    shadowArgs.push(`caption:${wrapSubtitleText(cue.text)}`, "-blur", "0x0.7", shadowLayerPath);
-    run("magick", shadowArgs);
-
     const textArgs = [
       "-size",
       `${textWidth}x${textHeight}`,
@@ -210,20 +193,16 @@ function renderSubtitleImages(cues: SubtitleCue[], fontPath: string | undefined)
       "-gravity",
       "center",
       "-pointsize",
-      "40",
-      "-stroke",
-      "rgba(0,0,0,0.85)",
-      "-strokewidth",
-      "1"
+      "44",
+      "-interline-spacing",
+      "-4"
     ];
     if (fontPath) textArgs.push("-font", fontPath);
     textArgs.push(`caption:${wrapSubtitleText(cue.text)}`, textLayerPath);
     run("magick", textArgs);
 
-    run("magick", [imagePath, shadowLayerPath, "-gravity", "center", "-geometry", "+0+3", "-composite", imagePath]);
     run("magick", [imagePath, textLayerPath, "-gravity", "center", "-composite", imagePath]);
     fs.unlinkSync(textLayerPath);
-    fs.unlinkSync(shadowLayerPath);
     return {
       ...cue,
       image_path: imagePath
@@ -406,11 +385,14 @@ const manifest = {
     burned_in: true,
     render_method: "imagemagick_png_overlay",
     style: {
-      panel_size: "1240x128",
+      panel_size: "1240x132",
       panel_margin_x: 24,
       panel_margin_bottom: 24,
       font_family: subtitleFontPath ? path.basename(subtitleFontPath) : "imagemagick-default",
-      text_fill: "#FFFFFF"
+      text_fill: "#FFFFFF",
+      text_point_size: 44,
+      text_shadow: false,
+      text_stroke: false
     },
     image_paths: renderedSubtitleCues.map((cue) => toProjectPath(cue.image_path ?? "")),
     cue_count: renderedSubtitleCues.length
