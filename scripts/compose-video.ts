@@ -10,6 +10,25 @@ function run(command: string, args: string[]) {
   });
 }
 
+function normalizeImageToPng(filePath: string) {
+  const tempPath = `${filePath}.normalized.png`;
+  run("magick", [
+    filePath,
+    "-auto-orient",
+    "-colorspace",
+    "sRGB",
+    "-background",
+    "black",
+    "-alpha",
+    "remove",
+    "-alpha",
+    "off",
+    `PNG24:${tempPath}`
+  ]);
+  fs.renameSync(tempPath, filePath);
+  return filePath;
+}
+
 function ffprobeDuration(filePath: string) {
   const output = execFileSync(
     "ffprobe",
@@ -241,10 +260,11 @@ let lastImagePath = "";
 
 storyboard.items.forEach((item, index) => {
   const realImagePath = path.join(realProviderImageDir, `${String(item.order).padStart(2, "0")}.png`);
-  const imagePath = useProviderImages ? realImagePath : path.join(process.cwd(), item.image_asset);
-  if (!fs.existsSync(imagePath)) {
+  const rawImagePath = useProviderImages ? realImagePath : path.join(process.cwd(), item.image_asset);
+  if (!fs.existsSync(rawImagePath)) {
     throw new Error(`Missing storyboard image: ${item.image_asset}`);
   }
+  const imagePath = useProviderImages ? normalizeImageToPng(rawImagePath) : rawImagePath;
   lastImagePath = imagePath;
   selectedImageAssets.push(toProjectPath(imagePath));
 
@@ -374,6 +394,9 @@ const manifest = {
   },
   source: useProviderImages ? "real_provider_images" : "image_assets",
   image_source_mode: imageSourceMode,
+  image_format_normalization: useProviderImages
+    ? { enabled: true, source: "compose_preflight", target_format: "PNG24" }
+    : { enabled: false },
   uses_provider_video: false,
   real_provider_images: useProviderImages ? realProviderImagePaths.map(toProjectPath) : [],
   storyboard_items: storyboard.items.length,

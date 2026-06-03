@@ -1,6 +1,7 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { existsProjectPath, readJson, videoRunFiles, writeJson, type StoryboardFile } from "./video-workflow-shared";
+import { existsProjectPath, outputDir, readJson, videoRunFiles, writeJson, type StoryboardFile } from "./video-workflow-shared";
 
 interface CheckItem {
   name: string;
@@ -18,6 +19,92 @@ function sum(values: number[]) {
 
 function near(left: number, right: number, tolerance = 0.75) {
   return Math.abs(left - right) <= tolerance;
+}
+
+function run(command: string, args: string[]) {
+  return execFileSync(command, args, {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+}
+
+function normalizeCompareImage(inputPath: string, outputPath: string) {
+  execFileSync(
+    "magick",
+    [
+      inputPath,
+      "-auto-orient",
+      "-resize",
+      "1280x720!",
+      "-crop",
+      "1280x500+0+0",
+      "+repage",
+      "-colorspace",
+      "sRGB",
+      `PNG24:${outputPath}`
+    ],
+    { cwd: process.cwd(), stdio: "pipe" }
+  );
+}
+
+function commandOutput(error: unknown) {
+  const value = error as { stdout?: string | Buffer; stderr?: string | Buffer };
+  return `${value.stderr ?? ""}${value.stdout ?? ""}`;
+}
+
+function compareRmse(leftPath: string, rightPath: string) {
+  try {
+    run("magick", ["compare", "-metric", "RMSE", leftPath, rightPath, "null:"]);
+    return 0;
+  } catch (error) {
+    const output = commandOutput(error);
+    const match = output.match(/\(([^)]+)\)/);
+    if (!match) throw new Error(`compare_failed ${output.trim().slice(0, 120)}`);
+    return Number(match[1]);
+  }
+}
+
+function checkVisibleImageSequence(
+  videoPath: string,
+  imagePaths: string[],
+  audioTimeline: Array<{ order?: number; start_seconds?: number; duration_seconds?: number; audio_path?: string }>
+) {
+  const visualDir = path.join(outputDir, "visual-check");
+  fs.rmSync(visualDir, { recursive: true, force: true });
+  fs.mkdirSync(visualDir, { recursive: true });
+
+  const referenceCrops = imagePaths.map((imagePath, index) => {
+    const cropPath = path.join(visualDir, `ref-${String(index + 1).padStart(2, "0")}.png`);
+    normalizeCompareImage(path.join(process.cwd(), imagePath), cropPath);
+    return { label: String(index + 1).padStart(2, "0"), cropPath };
+  });
+
+  const matches = audioTimeline.map((entry, index) => {
+    const expected = String(entry.order ?? index + 1).padStart(2, "0");
+    const start = entry.start_seconds ?? 0;
+    const duration = entry.duration_seconds ?? 0;
+    const sampleTime = start + duration / 2;
+    const framePath = path.join(visualDir, `frame-${expected}.png`);
+    const frameCropPath = path.join(visualDir, `frame-${expected}-crop.png`);
+    run("ffmpeg", ["-y", "-ss", sampleTime.toFixed(3), "-i", path.join(process.cwd(), videoPath), "-frames:v", "1", framePath]);
+    normalizeCompareImage(framePath, frameCropPath);
+    const scores = referenceCrops
+      .map((reference) => ({ label: reference.label, score: compareRmse(frameCropPath, reference.cropPath) }))
+      .sort((left, right) => left.score - right.score);
+    const best = scores[0];
+    return {
+      expected,
+      actual: best?.label ?? "missing",
+      score: best?.score ?? Number.POSITIVE_INFINITY
+    };
+  });
+
+  const ok = matches.every((match) => match.expected === match.actual && match.score < 0.2);
+  return {
+    ok,
+    detail: matches.map((match) => `${match.expected}->${match.actual}(${match.score.toFixed(3)})`).join(",")
+  };
 }
 
 function normalizeSubtitleText(value: string) {
@@ -161,6 +248,14 @@ if (existsProjectPath(videoRunFiles.finalVideoManifest)) {
     checks.push(item("final_video:audio_timeline_count", audioTimeline.length === 3, String(audioTimeline.length)));
     checks.push(item("final_video:audio_timeline_paths", audioTimeline.every((entry) => Boolean(entry.audio_path) && existsProjectPath(String(entry.audio_path))), String(audioTimeline.length)));
     checks.push(item("final_video:duration_matches_audio", duration > 0 && near(duration, audioTimelineTotal), `${duration} vs ${audioTimelineTotal}`));
+    if (process.env.REQUIRE_REAL_IMAGES === "1" && videoPath && existsProjectPath(videoPath) && realImages.length === 3 && audioTimeline.length === 3) {
+      try {
+        const visibleSequence = checkVisibleImageSequence(videoPath, realImages, audioTimeline);
+        checks.push(item("final_video:visible_image_sequence", visibleSequence.ok, visibleSequence.detail));
+      } catch (error) {
+        checks.push(item("final_video:visible_image_sequence", false, error instanceof Error ? error.message : String(error)));
+      }
+    }
     const subtitles = finalManifest.subtitle_assets;
     const srtPath = subtitles?.srt_path ?? "";
     checks.push(item("final_video:subtitles_srt", Boolean(srtPath) && existsProjectPath(srtPath), srtPath || "missing"));

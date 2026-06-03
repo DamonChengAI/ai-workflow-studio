@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { readJson, outputDir, sanitizeText, toProjectPath, videoRunFiles, writeJson, type StoryboardFile } from "./video-workflow-shared";
@@ -192,7 +193,30 @@ async function downloadImage(resultUrl: string, outputPath: string) {
   if (!response.ok) throw new Error(`download_failed status=${response.status}`);
   const bytes = Buffer.from(await response.arrayBuffer());
   fs.writeFileSync(outputPath, bytes);
+  normalizeImageToPng(outputPath);
   return bytes.length;
+}
+
+function normalizeImageToPng(filePath: string) {
+  const tempPath = `${filePath}.normalized.png`;
+  execFileSync(
+    "magick",
+    [
+      filePath,
+      "-auto-orient",
+      "-colorspace",
+      "sRGB",
+      "-background",
+      "black",
+      "-alpha",
+      "remove",
+      "-alpha",
+      "off",
+      `PNG24:${tempPath}`
+    ],
+    { cwd: process.cwd(), stdio: "pipe" }
+  );
+  fs.renameSync(tempPath, filePath);
 }
 
 function promptFor(item: StoryboardFile["items"][number]) {
@@ -217,6 +241,7 @@ async function main() {
     .map((item) => path.join(imageDir, `${String(item.order).padStart(2, "0")}.png`))
     .filter((filePath) => fs.existsSync(filePath));
   if (existingImages.length === storyboard.items.length && fs.existsSync(manifestPath)) {
+    existingImages.forEach((filePath) => normalizeImageToPng(filePath));
     console.log("real-media:smoke skipped");
     console.log("reason=completed_image_manifest_exists");
     return;
@@ -241,6 +266,7 @@ async function main() {
   for (const item of storyboard.items) {
     const outputPath = path.join(imageDir, `${String(item.order).padStart(2, "0")}.png`);
     if (fs.existsSync(outputPath)) {
+      normalizeImageToPng(outputPath);
       tasks.set(item.order, { task_id: "existing", status: "completed", result_url: null, output_path: outputPath });
       attempts.push({ phase: "reuse", order: item.order, ok: true, path: toProjectPath(outputPath) });
       continue;
