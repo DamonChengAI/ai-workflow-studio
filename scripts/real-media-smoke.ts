@@ -200,10 +200,9 @@ function promptFor(item: StoryboardFile["items"][number]) {
     `Create a 16:9 Chinese product promo image for the video titled "${item.title}".`,
     "Subject: Doubao premium plan membership purchase recommendation.",
     `Narration idea: ${item.narration_cn}`,
-    "Style: clean high-contrast product information slide, sharp layout, readable hierarchy, crisp solid panels, restrained premium palette, no real people, no logos, no unverifiable price text, no fake app screenshots.",
-    "Avoid translucent glass cards, blurred backgrounds behind text, tiny labels, decorative glow that lowers readability, and low-contrast white-on-pastel typography.",
-    "Keep all critical information above the lower 24% of the frame because hard subtitles will be burned into the bottom area.",
-    "Use large readable Chinese headline text only when necessary; do not render exact price or plan rights unless provided by official public source."
+    "Visual direction: restrained premium product visual with a clean high-contrast composition, readable Chinese headline/key elements, and solid panels behind any text.",
+    "Subtitle safe area: keep critical text and key objects out of the lower 24% of the frame.",
+    "Avoid tiny text, glassmorphism, blurred text backgrounds, and heavy glow; do not show real logos, real people, fake app screenshots, or unverifiable prices/plan rights."
   ].join(" ");
 }
 
