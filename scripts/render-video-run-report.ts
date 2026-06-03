@@ -16,6 +16,13 @@ const finalVideo = existsProjectPath(videoRunFiles.finalVideoManifest)
       real_provider_images?: string[];
       uses_provider_video?: boolean;
       audio_timeline?: Array<{ duration_seconds?: number; audio_path?: string; source?: string }>;
+      subtitle_assets?: {
+        srt_path?: string;
+        burned_in?: boolean;
+        render_method?: string;
+        cue_count?: number;
+        aligned_to_audio_timeline?: boolean;
+      };
     }>(videoRunFiles.finalVideoManifest)
   : null;
 const realProvider = existsProjectPath(videoRunFiles.realProviderManifest)
@@ -40,6 +47,9 @@ const audioTimelineTotal = finalVideo?.audio_timeline?.reduce((total, entry) => 
 const audioTimelineText = finalVideo
   ? `${Number(audioTimelineTotal.toFixed(2))} 秒，画面段落按 ffprobe 音频实际时长对齐`
   : "未生成";
+const subtitleText = finalVideo?.subtitle_assets
+  ? `${finalVideo.subtitle_assets.burned_in ? "已烧录进画面" : "未烧录"}，${finalVideo.subtitle_assets.cue_count ?? 0} 条，${finalVideo.subtitle_assets.aligned_to_audio_timeline ? "按音频时间线生成" : "未确认对齐"}`
+  : "未生成";
 
 const lines = [
   "# Video Workflow Run Report",
@@ -56,6 +66,7 @@ const lines = [
   `- 真实 provider 图片：${realProvider?.ok ? `已生成 ${(realProvider.images ?? []).filter((image) => image.ok).length} 张，并用于最终视频` : realProvider ? "未全部完成" : "未运行"}`,
   `- ElevenLabs TTS：${realAudio?.ok ? `${realTtsCount} 段真实 TTS，${mockAudioCount} 段 mock 兜底，模式 ${realAudio.mode}` : realAudio ? "未完成" : "未运行"}`,
   `- 音画时间线：${audioTimelineText}`,
+  `- 字幕状态：${subtitleText}`,
   `- Provider 视频生成：${finalVideo?.uses_provider_video ? "错误：不应使用" : "未使用"}`,
   `- 联网研究记录：${researchStatus}`,
   `- 分镜数量：${storyboard.items.length}`,
@@ -77,6 +88,7 @@ const lines = [
   "- 是否运行 real-audio:smoke，并留下 ElevenLabs TTS 或 mock 兜底的脱敏 manifest。",
   "- 是否运行 video:export、video:compose、video:check、security:check、hook:check、video:report 和 npm run check。",
   "- 是否让图片分段时长跟随 ffprobe 读取到的音频真实时长，避免只按固定 10 秒拼接。",
+  "- 是否生成字幕文件，并把最终视频字幕按同一条音频时间线烧录进画面。",
   "- 是否识别 MEDIA_005 的失败路径，并执行 retry 和复验。",
   "- 是否调用或至少使用 video-workflow-reviewer 的审查口径留下 subagent-review。",
   "- 是否避免输出 key、env、外部 URL、本地绝对路径和真实素材路径。",

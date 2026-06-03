@@ -55,6 +55,7 @@ export const videoRunFiles = {
   realProviderManifest: "outputs/video-run/real-provider-manifest.json",
   realAudioManifest: "outputs/video-run/real-audio-manifest.json",
   finalVideoManifest: "outputs/video-run/final-video-manifest.json",
+  subtitlesSrt: "outputs/video-run/subtitles.srt",
   qualityCheck: "outputs/video-run/quality-check.json",
   subagentReview: "outputs/video-run/subagent-review.md",
   hookCheck: "outputs/video-run/hook-check.json",

@@ -42,6 +42,8 @@ npm run agent:demo
 
 `outputs/video-run/final-video-manifest.json` 必须包含 `final_video`、`uses_provider_video: false`、`real_provider_images`、`audio_assets`、`audio_timeline`。`audio_timeline` 的总时长要和最终视频时长基本一致。
 
+最终视频必须包含按旁白生成的硬字幕。字幕时间线必须和 `audio_timeline` 使用同一组 ffprobe 音频真实时长，`outputs/video-run/final-video-manifest.json` 追加 `subtitle_assets`，并记录 SRT 路径、烧录状态、字幕图片路径和 cue 数。
+
 执行前先读：
 
 - `README.md`

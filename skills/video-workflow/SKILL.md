@@ -13,7 +13,7 @@
 7. 生成多张图片和对应音频的脱敏 manifest。
 8. 运行 `npm run real-media:smoke`，尝试真实 provider 图片生成；失败时记录脱敏原因，重试总数不能超过 30。不要调用视频生成接口。
 9. 运行 `npm run real-audio:smoke`，尝试 ElevenLabs TTS；失败时写 mock 兜底音频和脱敏原因。音频时长必须用 ffprobe 读取，并回写 storyboard 时间线。
-10. 运行 `npm run video:compose` 拼接 30 秒左右视频。最终视频只能由图片素材拼接得到，图片分段时长必须跟音频真实时长对齐。
+10. 运行 `npm run video:compose` 拼接 30 秒左右视频。最终视频只能由图片素材拼接得到，图片分段时长和字幕 cue 必须跟音频真实时长对齐，字幕要烧录进最终 mp4 画面。
 11. 使用 `video-workflow-reviewer` subagent 审查，留下 `outputs/video-run/subagent-review.md`。
 12. 运行 `REQUIRE_REAL_IMAGES=1 REQUIRE_REAL_AUDIO=1 REQUIRE_RESEARCH=1 npm run video:check`、`npm run security:check`、`npm run video:report`、`npm run hook:check` 和 `npm run check`。
 

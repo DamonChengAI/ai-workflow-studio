@@ -10,4 +10,6 @@
 
 视频合成必须以音频文件的 ffprobe 时长为准，`final-video-manifest.json` 要写 `audio_timeline`，用于复查每段图片 duration 和音频时间线是否对齐。
 
+视频合成还必须生成字幕文件，并把字幕烧录进最终 mp4 的画面。字幕 cue 要来自 storyboard 旁白，时间线要复用同一组 ffprobe 音频时长，不能使用旧字幕文件或独立估时。
+
 `media-manifest.json`、`real-provider-manifest.json`、`real-audio-manifest.json`、`final-video-manifest.json` 的字段必须稳定，新增字段只能追加，不能删除已有检查依赖字段。

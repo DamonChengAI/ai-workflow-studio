@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { existsProjectPath, readJson, videoRunFiles, writeJson, type StoryboardFile } from "./video-workflow-shared";
 
@@ -17,6 +18,31 @@ function sum(values: number[]) {
 
 function near(left: number, right: number, tolerance = 0.75) {
   return Math.abs(left - right) <= tolerance;
+}
+
+function normalizeSubtitleText(value: string) {
+  return value.replace(/\s+/g, "");
+}
+
+function parseSrtTime(value: string) {
+  const match = value.match(/^(\d{2}):(\d{2}):(\d{2}),(\d{3})$/);
+  if (!match) return null;
+  const [, hours, minutes, seconds, ms] = match;
+  return Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds) + Number(ms) / 1000;
+}
+
+function parseSrt(text: string) {
+  const blocks = text.trim().split(/\r?\n\r?\n+/).filter(Boolean);
+  return blocks.flatMap((block) => {
+    const lines = block.split(/\r?\n/);
+    const timingIndex = lines.findIndex((line) => line.includes("-->"));
+    if (timingIndex === -1) return [];
+    const [startRaw, endRaw] = lines[timingIndex].split("-->").map((item) => item.trim());
+    const start = parseSrtTime(startRaw);
+    const end = parseSrtTime(endRaw);
+    if (start === null || end === null) return [];
+    return [{ start, end, text: lines.slice(timingIndex + 1).join("") }];
+  });
 }
 
 type AudioMode = "real_tts_completed" | "mock_fallback";
@@ -41,6 +67,14 @@ interface FinalVideoManifest {
   uses_provider_video?: boolean;
   storyboard_items?: number;
   audio_timeline?: Array<{ order?: number; start_seconds?: number; duration_seconds?: number; audio_path?: string }>;
+  subtitle_assets?: {
+    srt_path?: string;
+    aligned_to_audio_timeline?: boolean;
+    burned_in?: boolean;
+    render_method?: string;
+    image_paths?: string[];
+    cue_count?: number;
+  };
 }
 
 const checks: CheckItem[] = [];
@@ -102,6 +136,27 @@ if (existsProjectPath(videoRunFiles.finalVideoManifest)) {
     checks.push(item("final_video:audio_timeline_count", audioTimeline.length === 3, String(audioTimeline.length)));
     checks.push(item("final_video:audio_timeline_paths", audioTimeline.every((entry) => Boolean(entry.audio_path) && existsProjectPath(String(entry.audio_path))), String(audioTimeline.length)));
     checks.push(item("final_video:duration_matches_audio", duration > 0 && near(duration, audioTimelineTotal), `${duration} vs ${audioTimelineTotal}`));
+    const subtitles = finalManifest.subtitle_assets;
+    const srtPath = subtitles?.srt_path ?? "";
+    checks.push(item("final_video:subtitles_srt", Boolean(srtPath) && existsProjectPath(srtPath), srtPath || "missing"));
+    checks.push(item("final_video:subtitles_burned_in", subtitles?.burned_in === true, String(subtitles?.burned_in)));
+    checks.push(item("final_video:subtitle_render_method", subtitles?.render_method === "imagemagick_png_overlay", String(subtitles?.render_method)));
+    checks.push(item("final_video:subtitles_aligned", subtitles?.aligned_to_audio_timeline === true, String(subtitles?.aligned_to_audio_timeline)));
+    const subtitleImagePaths = subtitles?.image_paths ?? [];
+    checks.push(item("final_video:subtitle_image_count", subtitleImagePaths.length === (subtitles?.cue_count ?? -1) && subtitleImagePaths.length >= 3, `${subtitleImagePaths.length} vs ${subtitles?.cue_count ?? "missing"}`));
+    checks.push(item("final_video:subtitle_image_paths", subtitleImagePaths.every((entry) => Boolean(entry) && existsProjectPath(entry)), String(subtitleImagePaths.length)));
+    if (srtPath && existsProjectPath(srtPath)) {
+      const srtText = fs.readFileSync(path.join(process.cwd(), srtPath), "utf8");
+      const cues = parseSrt(srtText);
+      const cueText = normalizeSubtitleText(cues.map((cue) => cue.text).join(""));
+      const storyboardText = normalizeSubtitleText((storyboard?.items ?? []).map((entry) => entry.narration_cn).join(""));
+      const firstCueStart = cues[0]?.start ?? -1;
+      const lastCueEnd = cues.at(-1)?.end ?? 0;
+      checks.push(item("final_video:subtitle_cue_count", cues.length === (subtitles?.cue_count ?? -1) && cues.length >= 3, `${cues.length} vs ${subtitles?.cue_count ?? "missing"}`));
+      checks.push(item("final_video:subtitle_text_matches_storyboard", cueText === storyboardText, `${cueText.length} vs ${storyboardText.length}`));
+      checks.push(item("final_video:subtitle_starts_at_zero", firstCueStart >= 0 && firstCueStart <= 0.1, String(firstCueStart)));
+      checks.push(item("final_video:subtitle_duration_matches_video", duration > 0 && near(duration, lastCueEnd), `${duration} vs ${Number(lastCueEnd.toFixed(2))}`));
+    }
   } catch (error) {
     checks.push(item("final_video:manifest", false, error instanceof Error ? error.message : String(error)));
   }
