@@ -10,10 +10,10 @@ export const internalProviderDebugFixture = {
 };
 
 const visualStyle =
-  "Editorial illustration style, bold graphic shapes, limited color palette of navy, gold, and warm gray, textured brush strokes, dark charcoal background,";
+  "Clean high-contrast product information slide style, crisp editorial layout, large readable typography, solid panels, limited palette of navy, teal, gold, and cool gray,";
 
 const visualEnding =
-  "Keep all important text labels, headlines, numbers, and key visual elements above the lower 20% of the frame so they don't conflict with subtitles. The scene extends seamlessly to all four edges with no decorative frame, no painting border, no vignette, no platform or base under main objects. Do not render prompt instructions, format specs, aspect ratio markers, subtitle-safe-area notes, or any production guidance as visible text in the image.";
+  "Keep all important text labels, headlines, numbers, and key visual elements above the lower 24% of the frame so they don't conflict with subtitles. Use high contrast for any visible text; avoid translucent glass cards, blurred backgrounds behind text, tiny labels, and decorative glow that lowers readability. The scene extends seamlessly to all four edges with no decorative frame, no painting border, no vignette, no platform or base under main objects. Do not render prompt instructions, format specs, aspect ratio markers, subtitle-safe-area notes, or any production guidance as visible text in the image.";
 
 const fashionVisualStyle =
   "小红书 3:4 竖版时尚编辑风，克制、专业、适合审美解读；使用 mock 视觉素材，不出现真实品牌 logo、真实名人脸、真实媒体截图或版权图片；";

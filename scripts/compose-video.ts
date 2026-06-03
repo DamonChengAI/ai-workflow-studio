@@ -124,6 +124,14 @@ function writeSrt(filePath: string, cues: SubtitleCue[]) {
 }
 
 function findSubtitleFont() {
+  try {
+    const fonts = execFileSync("magick", ["-list", "font"], { encoding: "utf8" });
+    const fontNames = ["PingFang-SC-Semibold", "Hiragino-Sans-GB-W6", "Heiti-SC-Medium"];
+    const fontName = fontNames.find((candidate) => fonts.includes(`Font: ${candidate}`));
+    if (fontName) return fontName;
+  } catch {
+    // Fall back to system font files below.
+  }
   const candidates = [
     "/System/Library/Fonts/Hiragino Sans GB.ttc",
     "/System/Library/Fonts/STHeiti Medium.ttc",
@@ -137,43 +145,74 @@ function renderSubtitleImages(cues: SubtitleCue[], fontPath: string | undefined)
   const imageDir = path.join(composeDir, "subtitle-images");
   fs.rmSync(imageDir, { recursive: true, force: true });
   fs.mkdirSync(imageDir, { recursive: true });
+  const panelWidth = 1240;
+  const panelHeight = 128;
+  const textWidth = 1176;
+  const textHeight = 100;
 
   return cues.map((cue) => {
     const imagePath = path.join(imageDir, `${String(cue.index).padStart(3, "0")}.png`);
     const textLayerPath = path.join(imageDir, `${String(cue.index).padStart(3, "0")}.text.png`);
+    const shadowLayerPath = path.join(imageDir, `${String(cue.index).padStart(3, "0")}.shadow.png`);
     const args = [
       "-size",
-      "1216x150",
+      `${panelWidth}x${panelHeight}`,
       "xc:none",
       "-fill",
-      "rgba(9,14,26,0.66)",
+      "rgba(0,0,0,0.16)",
       "-draw",
-      "roundrectangle 0,0 1215,149 22,22",
+      `roundrectangle 5,8 ${panelWidth - 6},${panelHeight - 1} 22,22`,
+      "-fill",
+      "rgba(36,50,74,0.72)",
+      "-draw",
+      `roundrectangle 0,0 ${panelWidth - 1},${panelHeight - 8} 20,20`,
       "-stroke",
-      "rgba(255,228,176,0.22)",
+      "rgba(255,255,255,0.18)",
       "-strokewidth",
       "1",
       "-fill",
       "none",
       "-draw",
-      "roundrectangle 1,1 1214,148 22,22",
+      `roundrectangle 1,1 ${panelWidth - 2},${panelHeight - 9} 20,20`,
+      "-stroke",
+      "none",
+      "-fill",
+      "rgba(255,255,255,0.10)",
+      "-draw",
+      `roundrectangle 34,10 ${panelWidth - 35},12 2,2`,
       imagePath
     ];
     run("magick", args);
 
-    const textArgs = [
+    const shadowArgs = [
       "-size",
-      "1160x124",
+      `${textWidth}x${textHeight}`,
       "-background",
       "none",
       "-fill",
-      "#FFF4DD",
+      "rgba(0,0,0,0.95)",
       "-gravity",
       "center",
       "-pointsize",
-      "39",
+      "40"
+    ];
+    if (fontPath) shadowArgs.push("-font", fontPath);
+    shadowArgs.push(`caption:${wrapSubtitleText(cue.text)}`, "-blur", "0x0.7", shadowLayerPath);
+    run("magick", shadowArgs);
+
+    const textArgs = [
+      "-size",
+      `${textWidth}x${textHeight}`,
+      "-background",
+      "none",
+      "-fill",
+      "#FFFFFF",
+      "-gravity",
+      "center",
+      "-pointsize",
+      "40",
       "-stroke",
-      "rgba(5,8,14,0.82)",
+      "rgba(0,0,0,0.85)",
       "-strokewidth",
       "1"
     ];
@@ -181,8 +220,10 @@ function renderSubtitleImages(cues: SubtitleCue[], fontPath: string | undefined)
     textArgs.push(`caption:${wrapSubtitleText(cue.text)}`, textLayerPath);
     run("magick", textArgs);
 
+    run("magick", [imagePath, shadowLayerPath, "-gravity", "center", "-geometry", "+0+3", "-composite", imagePath]);
     run("magick", [imagePath, textLayerPath, "-gravity", "center", "-composite", imagePath]);
     fs.unlinkSync(textLayerPath);
+    fs.unlinkSync(shadowLayerPath);
     return {
       ...cue,
       image_path: imagePath
@@ -204,22 +245,27 @@ const baseVideoWithAudio = path.join(composeDir, "mock-workflow-video.mp4");
 const finalVideo = path.join(outputDir, "final-video.mp4");
 const subtitlesSrt = path.join(process.cwd(), videoRunFiles.subtitlesSrt);
 const realProviderImageDir = path.join(outputDir, "real-provider-images");
+const imageSourceMode = process.env.VIDEO_IMAGE_SOURCE === "provider" ? "provider" : "asset";
+const realProviderImagePaths = storyboard.items.map((item) => path.join(realProviderImageDir, `${String(item.order).padStart(2, "0")}.png`));
+const useProviderImages = imageSourceMode === "provider" && realProviderImagePaths.every((filePath) => fs.existsSync(filePath));
 
 const imageConcatLines: string[] = [];
 const audioConcatLines: string[] = [];
 const generatedAudio: string[] = [];
 const audioTimeline: Array<{ order: number; start_seconds: number; duration_seconds: number; audio_path: string; source: string }> = [];
+const selectedImageAssets: string[] = [];
 const syncedStoryboardItems: StoryboardFile["items"] = [];
 let cursor = 0;
 let lastImagePath = "";
 
 storyboard.items.forEach((item, index) => {
   const realImagePath = path.join(realProviderImageDir, `${String(item.order).padStart(2, "0")}.png`);
-  const imagePath = fs.existsSync(realImagePath) ? realImagePath : path.join(process.cwd(), item.image_asset);
+  const imagePath = useProviderImages ? realImagePath : path.join(process.cwd(), item.image_asset);
   if (!fs.existsSync(imagePath)) {
     throw new Error(`Missing storyboard image: ${item.image_asset}`);
   }
   lastImagePath = imagePath;
+  selectedImageAssets.push(toProjectPath(imagePath));
 
   const audioPath = path.join(process.cwd(), item.audio_manifest_path);
   fs.mkdirSync(path.dirname(audioPath), { recursive: true });
@@ -302,7 +348,7 @@ const overlayChain = renderedSubtitleCues.reduce((parts, cue, index) => {
   const outputLabel = index === renderedSubtitleCues.length - 1 ? "[vout]" : `[v${index + 1}]`;
   const start = cue.start_seconds.toFixed(3);
   const end = cue.end_seconds.toFixed(3);
-  parts.push(`${inputLabel}[${index + 1}:v]overlay=x=(W-w)/2:y=H-h-30:enable='between(t,${start},${end})':eof_action=pass${outputLabel}`);
+  parts.push(`${inputLabel}[${index + 1}:v]overlay=x=(W-w)/2:y=H-h-24:enable='between(t,${start},${end})':eof_action=pass${outputLabel}`);
   return parts;
 }, [] as string[]);
 run("ffmpeg", [
@@ -336,7 +382,7 @@ for (const tempFile of [imageConcatFile, audioConcatFile]) {
   if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
 }
 const manifest = {
-  mock_only: !storyboard.items.every((item) => fs.existsSync(path.join(realProviderImageDir, `${String(item.order).padStart(2, "0")}.png`))),
+  mock_only: !useProviderImages,
   redacted: true,
   final_video: {
     path: toProjectPath(finalVideo),
@@ -345,19 +391,12 @@ const manifest = {
     resolution: "1280x720",
     audio: true
   },
-  source: storyboard.items.every((item) => fs.existsSync(path.join(realProviderImageDir, `${String(item.order).padStart(2, "0")}.png`)))
-    ? "real_provider_images"
-    : "image_assets_with_mock_fallback",
+  source: useProviderImages ? "real_provider_images" : "image_assets",
+  image_source_mode: imageSourceMode,
   uses_provider_video: false,
-  real_provider_images: storyboard.items
-    .map((item) => path.join(realProviderImageDir, `${String(item.order).padStart(2, "0")}.png`))
-    .filter((filePath) => fs.existsSync(filePath))
-    .map(toProjectPath),
+  real_provider_images: useProviderImages ? realProviderImagePaths.map(toProjectPath) : [],
   storyboard_items: storyboard.items.length,
-  image_assets: storyboard.items.map((item) => {
-    const realImagePath = path.join(realProviderImageDir, `${String(item.order).padStart(2, "0")}.png`);
-    return fs.existsSync(realImagePath) ? toProjectPath(realImagePath) : item.image_asset;
-  }),
+  image_assets: selectedImageAssets,
   audio_assets: generatedAudio,
   audio_timeline: audioTimeline,
   subtitle_assets: {
@@ -367,11 +406,11 @@ const manifest = {
     burned_in: true,
     render_method: "imagemagick_png_overlay",
     style: {
-      panel_size: "1216x150",
+      panel_size: "1240x128",
       panel_margin_x: 24,
-      panel_margin_bottom: 30,
+      panel_margin_bottom: 24,
       font_family: subtitleFontPath ? path.basename(subtitleFontPath) : "imagemagick-default",
-      text_fill: "#FFF4DD"
+      text_fill: "#FFFFFF"
     },
     image_paths: renderedSubtitleCues.map((cue) => toProjectPath(cue.image_path ?? "")),
     cue_count: renderedSubtitleCues.length

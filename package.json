@@ -11,6 +11,7 @@
     "validate": "tsx scripts/validate-sample.ts",
     "demo": "tsx scripts/run-demo.ts",
     "agent:demo": "tsx scripts/agent-demo.ts",
+    "video:assets": "tsx scripts/render-video-assets.ts",
     "video:export": "tsx scripts/export-video-run.ts",
     "real-media:smoke": "tsx scripts/real-media-smoke.ts",
     "real-audio:smoke": "tsx scripts/real-audio-smoke.ts",
@@ -19,7 +20,7 @@
     "security:check": "tsx scripts/security-check.ts",
     "video:report": "tsx scripts/render-video-run-report.ts",
     "hook:check": "tsx scripts/hook-check.ts",
-    "check": "npm run build && npm run validate && npm run demo && npm run video:export && npm run video:compose && npm run video:check && npm run security:check && npm run video:report && npm run hook:check && npm test",
+    "check": "npm run build && npm run validate && npm run demo && npm run video:assets && npm run video:export && npm run video:compose && npm run video:check && npm run security:check && npm run video:report && npm run hook:check && npm test",
     "test": "vitest run"
   },
   "dependencies": {
