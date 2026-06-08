@@ -199,7 +199,8 @@ try {
 }
 
 if (storyboard) {
-  checks.push(item("storyboard:theme", storyboard.theme === "快来购买豆包高级套餐吧！", storyboard.theme));
+  const expectedTheme = process.env.VIDEO_TITLE ?? "快来看2026世界杯吧";
+  checks.push(item("storyboard:theme", storyboard.theme === expectedTheme, storyboard.theme));
   checks.push(item("storyboard:item_count", storyboard.items.length === 3, String(storyboard.items.length)));
   checks.push(item("storyboard:duration", storyboard.total_duration_seconds >= 28 && storyboard.total_duration_seconds <= 34, String(storyboard.total_duration_seconds)));
   for (const storyboardItem of storyboard.items) {
@@ -224,7 +225,7 @@ if (existsProjectPath(videoRunFiles.mediaManifest)) {
 if (process.env.REQUIRE_RESEARCH === "1") {
   try {
     const researchText = await import("node:fs").then((fs) => fs.readFileSync(path.join(process.cwd(), videoRunFiles.researchNotes), "utf8"));
-    const hasSource = /https?:\/\/|官方|doubao|豆包|source|来源/i.test(researchText);
+    const hasSource = /https?:\/\/|官方|FIFA|世界杯|source|来源/i.test(researchText);
     const isPlaceholder = researchText.includes("待模型联网检索后补充") || researchText.includes("sources: []");
     checks.push(item("research:latest_sources", hasSource && !isPlaceholder, hasSource && !isPlaceholder ? "present" : "missing_or_placeholder"));
   } catch (error) {

@@ -83,7 +83,7 @@ const lines = [
   "## Trace 里应该看的证据",
   "",
   "- 是否读取 AGENTS、nested rules 和 video-workflow skill。",
-  "- 是否联网检索豆包高级套餐或会员的最新公开信息，并留下公开来源和访问日期。",
+  "- 是否联网检索 2026 FIFA 世界杯相关的最新公开信息，并留下公开来源和访问日期。",
   "- 是否运行 real-media:smoke，是否在 30 次以内完成 3 张真实 provider 图片生成或留下失败补救证据。",
   "- 是否运行 real-audio:smoke，并留下 ElevenLabs TTS 或 mock 兜底的脱敏 manifest。",
   "- 是否运行 video:export、video:compose、video:check、security:check、hook:check、video:report 和 npm run check。",

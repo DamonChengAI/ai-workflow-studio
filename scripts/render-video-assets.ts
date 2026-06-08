@@ -150,15 +150,15 @@ function renderCover() {
   const args = baseArgs("#E0B15A");
   const outputPath = path.join(assetDir, "COVER_001.png");
   const tempPath = path.join(assetDir, ".COVER_001.tmp.png");
-  header(args, "DOUBAO PRO / DECISION GUIDE", "豆包高级套餐");
-  annotate(args, displayFont, "76", "#111D31", 118, 292, "先核对，再购买");
-  annotate(args, bodyFont, "38", "#39465A", 124, 354, "把权益、频率和风险边界先讲清楚");
-  pill(args, 124, 410, 284, "30 秒购买判断", "#D8A848", "#111D31");
+  header(args, "2026 WORLD CUP / VIEWING GUIDE", "2026 世界杯");
+  annotate(args, displayFont, "76", "#111D31", 118, 292, "三国联办，等你开场");
+  annotate(args, bodyFont, "38", "#39465A", 124, 354, "把赛程、城市和观赛边界先讲清楚");
+  pill(args, 124, 410, 284, "30 秒观赛提醒", "#D8A848", "#111D31");
 
   const cards = [
-    ["01", "公开信息核对", "避免直接编广告"],
-    ["02", "使用频率判断", "写作 / 搜索 / 图片 / 长任务"],
-    ["03", "购买前确认", "以官方最新页面为准"]
+    ["01", "三国联办", "美国 / 墨西哥 / 加拿大"],
+    ["02", "48 队扩军", "更多比赛和城市"],
+    ["03", "赛程复核", "以 FIFA 官方页面为准"]
   ];
   cards.forEach(([num, title, body], index) => {
     const y = 238 + index * 142;
@@ -178,13 +178,13 @@ function renderValue() {
   const args = baseArgs("#1BA6A6");
   const outputPath = path.join(assetDir, "MEDIA_001.png");
   const tempPath = path.join(assetDir, ".MEDIA_001.tmp.png");
-  header(args, "BENEFITS / USAGE SCENES", "核心权益和使用场景");
+  header(args, "MATCHDAY / VIEWING SCENES", "核心看点和观赛场景");
 
   const items = [
-    ["写作创作", "稳定输出长文、脚本、改写"],
-    ["深度搜索", "先查证，再组织结论"],
-    ["图片生成", "海报、封面、视觉草图"],
-    ["长任务处理", "更少等待，更适合连续工作"]
+    ["开幕关注", "6 月 11 日拉开赛程"],
+    ["决赛时间", "7 月 19 日收官"],
+    ["球队扩军", "48 支球队同场竞争"],
+    ["城市观赛", "跨三国多城市体验"]
   ];
   items.forEach(([title, body], index) => {
     const col = index % 2;
@@ -199,10 +199,10 @@ function renderValue() {
 
   drawCard(args, 1214, 230, 290, 338, "#111D31", "rgba(17,29,49,0.10)");
   annotate(args, bodyFont, "30", "rgba(255,255,255,0.66)", 1260, 286, "适合人群");
-  annotate(args, displayFont, "48", "#FFFFFF", 1260, 356, "高频 AI 用户");
-  annotate(args, bodyFont, "30", "#D9E3EE", 1260, 420, "每天都在写作");
-  annotate(args, bodyFont, "30", "#D9E3EE", 1260, 466, "需要搜索判断");
-  annotate(args, bodyFont, "30", "#D9E3EE", 1260, 512, "处理连续任务");
+  annotate(args, displayFont, "48", "#FFFFFF", 1260, 356, "看球的人");
+  annotate(args, bodyFont, "30", "#D9E3EE", 1260, 420, "约朋友观赛");
+  annotate(args, bodyFont, "30", "#D9E3EE", 1260, 466, "规划行程");
+  annotate(args, bodyFont, "30", "#D9E3EE", 1260, 512, "关注赛程更新");
   args.push("-fill", "#E0B15A", "-draw", "roundrectangle 1260,602 1458,612 5,5");
 
   args.push(tempPath);
@@ -214,25 +214,25 @@ function renderDecision() {
   const args = baseArgs("#FF7A59");
   const outputPath = path.join(assetDir, "MEDIA_002.png");
   const tempPath = path.join(assetDir, ".MEDIA_002.tmp.png");
-  header(args, "BUYING CHECKLIST / RISK BOUNDARY", "购买提醒和风险边界");
-  annotate(args, displayFont, "72", "#111D31", 124, 294, "认真比较，再下单");
-  annotate(args, bodyFont, "36", "#39465A", 128, 354, "套餐是否值得买，取决于真实使用频率");
+  header(args, "VIEWING CHECKLIST / INFO BOUNDARY", "观赛提醒和信息边界");
+  annotate(args, displayFont, "72", "#111D31", 124, 294, "先核对，再出发");
+  annotate(args, bodyFont, "36", "#39465A", 128, 354, "场馆、赛程和转播信息要以官方更新为准");
 
   drawCard(args, 124, 432, 446, 160, "#FFFFFF", "rgba(17,29,49,0.12)");
   annotate(args, bodyFont, "30", "#526071", 164, 488, "适合");
-  annotate(args, displayFont, "42", "#111D31", 164, 542, "学习 / 创作 / 工作");
-  annotate(args, bodyFont, "29", "#526071", 164, 580, "每天都要用 AI 处理任务");
+  annotate(args, displayFont, "42", "#111D31", 164, 542, "看球 / 旅行 / 聚会");
+  annotate(args, bodyFont, "29", "#526071", 164, 580, "提前规划观赛时间");
 
   drawCard(args, 624, 432, 446, 160, "#FFFFFF", "rgba(17,29,49,0.12)");
   annotate(args, bodyFont, "30", "#526071", 664, 488, "确认");
-  annotate(args, displayFont, "42", "#111D31", 664, 542, "官方最新权益");
-  annotate(args, bodyFont, "29", "#526071", 664, 580, "价格、限制和服务条款");
+  annotate(args, displayFont, "42", "#111D31", 664, 542, "官方最新赛程");
+  annotate(args, bodyFont, "29", "#526071", 664, 580, "场馆、开球和转播窗口");
 
   drawCard(args, 1124, 270, 380, 322, "#111D31", "rgba(17,29,49,0.10)");
-  annotate(args, bodyFont, "30", "rgba(255,255,255,0.66)", 1172, 338, "最终判断");
-  annotate(args, displayFont, "52", "#FFFFFF", 1170, 420, "值得认真比较");
-  annotate(args, bodyFont, "30", "#D9E3EE", 1174, 486, "高频使用时");
-  annotate(args, bodyFont, "30", "#D9E3EE", 1174, 532, "再考虑购买");
+  annotate(args, bodyFont, "30", "rgba(255,255,255,0.66)", 1172, 338, "最终提醒");
+  annotate(args, displayFont, "52", "#FFFFFF", 1170, 420, "以官方为准");
+  annotate(args, bodyFont, "30", "#D9E3EE", 1174, 486, "赛程会更新");
+  annotate(args, bodyFont, "30", "#D9E3EE", 1174, 532, "出发前再核对");
   args.push("-fill", "#FF7A59", "-draw", "roundrectangle 1174,602 1450,612 5,5");
 
   args.push(tempPath);

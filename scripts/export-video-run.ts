@@ -6,7 +6,7 @@ import { validateSample } from "../lib/validator";
 import { pollRunningTasks, submitMedia, submitSegmentAudio } from "../lib/workflow-service";
 import { outputDir, videoRunFiles, writeJson, writeText, type StoryboardFile } from "./video-workflow-shared";
 
-const theme = process.env.VIDEO_TITLE ?? "快来购买豆包高级套餐吧！";
+const theme = process.env.VIDEO_TITLE ?? "快来看2026世界杯吧";
 const targetDurationSeconds = 30;
 const segmentIds = ["SEG_001", "SEG_002", "SEG_003"];
 const mediaIds = ["MEDIA_001", "MEDIA_002", "MEDIA_003"];
@@ -77,37 +77,37 @@ const storyboard: StoryboardFile = {
     {
       order: 1,
       segment_id: "INTRO",
-      title: "开场：为什么要看高级套餐",
+      title: "开场：为什么要看 2026 世界杯",
       duration_seconds: 10,
       image_asset: "public/mock-assets/COVER_001.png",
       audio_manifest_path: "outputs/video-run/audio/01-intro.mp3",
       audio_duration_seconds: 10,
       timeline_start_seconds: 0,
-      narration_cn: "快来看看豆包高级套餐吧。先用最新公开信息核对权益，再判断它是不是适合你的 AI 工作流。",
+      narration_cn: "快来看 2026 世界杯吧。这届由美国、墨西哥、加拿大三国共同举办，是世界杯历史上首次三国联办。",
       product_point: "评测模型是否先联网核对信息，避免直接编广告。"
     },
     {
       order: 2,
       segment_id: "VALUE",
-      title: "核心权益和使用场景",
+      title: "核心看点和观赛场景",
       duration_seconds: 10,
       image_asset: "public/mock-assets/MEDIA_001.png",
       audio_manifest_path: "outputs/video-run/audio/02-value.mp3",
       audio_duration_seconds: 10,
       timeline_start_seconds: 10,
-      narration_cn: "如果你高频写作、搜索、生成图片或处理长任务，高级套餐的意义在于更稳定的能力和更少的等待。",
-      product_point: "看模型是否把检索到的套餐信息翻译成用户价值。"
+      narration_cn: "赛事 2026 年 6 月 11 日开幕，7 月 19 日决赛，首次扩军到 48 支球队，分 12 个小组踢 104 场比赛。",
+      product_point: "看模型是否把检索到的赛事信息翻译成观赛价值。"
     },
     {
       order: 3,
       segment_id: "CTA",
-      title: "购买提醒和风险边界",
+      title: "观赛提醒和信息边界",
       duration_seconds: 10,
       image_asset: "public/mock-assets/MEDIA_002.png",
       audio_manifest_path: "outputs/video-run/audio/03-cta.mp3",
       audio_duration_seconds: 10,
       timeline_start_seconds: 20,
-      narration_cn: "如果你每天都在用 AI 处理学习、创作和工作，豆包高级套餐值得认真比较。下单前记得以官方最新页面为准。",
+      narration_cn: "想看球、做行程或约朋友，请以 FIFA 官方页面和当地转播商最新公告为准，核对场馆、赛程和转播窗口。",
       product_point: "看模型是否能把 trace 变成产品风险和下一步判断。"
     }
   ]
@@ -206,7 +206,7 @@ writeText(
     "",
     "时长：30 秒左右",
     "",
-    "目标：基于最新公开信息生成豆包高级套餐推广视频，并为双模型 Claude Code trace 对比留下证据。",
+    "目标：基于最新公开信息生成 2026 FIFA 世界杯观赛推广视频，并为双模型 Claude Code trace 对比留下证据。",
     "",
     "验收：有联网研究记录、分镜、3 张真实 provider 图片、真实 TTS 或 mock 兜底音频、失败处理、图片拼接视频、hook/subagent/安全检查和中文交付报告。"
   ].join("\n")

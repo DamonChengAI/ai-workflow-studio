@@ -219,14 +219,14 @@ function normalizeImageToPng(filePath: string) {
   fs.renameSync(tempPath, filePath);
 }
 
-function promptFor(item: StoryboardFile["items"][number]) {
+function promptFor(storyboard: StoryboardFile, item: StoryboardFile["items"][number]) {
   return [
-    `Create a 16:9 Chinese product promo image for the video titled "${item.title}".`,
-    "Subject: Doubao premium plan membership purchase recommendation.",
+    `Create a 16:9 Chinese event promo image for the video theme "${storyboard.theme}" and storyboard segment "${item.title}".`,
+    `Subject: ${storyboard.theme}.`,
     `Narration idea: ${item.narration_cn}`,
-    "Visual direction: restrained premium product visual with a clean high-contrast composition, readable Chinese headline/key elements, and solid panels behind any text.",
+    "Visual direction: football tournament viewing promo, stadium energy, match-day atmosphere, clean high-contrast composition, readable Chinese headline/key elements, and solid panels behind any text.",
     "Subtitle safe area: keep critical text and key objects out of the lower 24% of the frame.",
-    "Avoid tiny text, glassmorphism, blurred text backgrounds, and heavy glow; do not show real logos, real people, fake app screenshots, or unverifiable prices/plan rights."
+    "Avoid tiny text, glassmorphism, blurred text backgrounds, and heavy glow; do not show real logos, real people, fake app screenshots, unverifiable schedules, unrelated AI app branding, app commerce screens, or price cards."
   ].join(" ");
 }
 
@@ -274,7 +274,7 @@ async function main() {
 
     for (let submitAttempt = 1; submitAttempt <= submitRetries; submitAttempt += 1) {
       try {
-        const taskId = await submitImage(submitUrl, apiKey, model, promptFor(item));
+        const taskId = await submitImage(submitUrl, apiKey, model, promptFor(storyboard, item));
         tasks.set(item.order, { task_id: taskId, status: "pending", result_url: null, output_path: outputPath });
         attempts.push({ phase: "submit", order: item.order, submit_attempt: submitAttempt, ok: true, task_id_present: true });
         break;

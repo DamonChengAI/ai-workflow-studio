@@ -5,7 +5,7 @@
 按顺序执行：
 
 1. 读根规则、`scripts/AGENTS.md`、`reports/AGENTS.md` 和现有 workflow 代码。
-2. 联网检索豆包高级套餐或会员相关的最新公开信息，生成 `outputs/video-run/research-notes.md`。
+2. 联网检索 2026 FIFA 世界杯相关的最新公开信息，生成 `outputs/video-run/research-notes.md`。
 3. 生成 `outputs/video-run/request.md`。
 4. 生成 `outputs/video-run/storyboard.json`。
 5. 生成 `outputs/video-run/media-plan.json`。
